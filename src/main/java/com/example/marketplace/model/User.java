@@ -34,6 +34,7 @@ public class User implements UserDetails {
     private String nicNumber;
     private LocalDateTime createdAt;
     private String profilePhotoUrl;
+    private String shopId;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

@@ -31,10 +31,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errors);
     }
 
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<Map<String, String>> handleAuthException(
+            org.springframework.security.core.AuthenticationException ex) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", "Invalid email or password");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleOther(Exception ex) {
+        ex.printStackTrace(); // Log the error to console
         Map<String, String> body = new HashMap<>();
-        body.put("error", "Internal server error");
+        body.put("error", "Internal server error: " + ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

@@ -22,4 +22,6 @@ public class UserDto {
     private LocalDateTime createdAt;
     private String profilePhotoUrl;
     private Set<String> roles;
+    private boolean hasShop;
+    private String shopId;
 }

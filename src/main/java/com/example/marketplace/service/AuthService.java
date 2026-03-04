@@ -7,15 +7,14 @@ import com.example.marketplace.dto.UserDto;
 import com.example.marketplace.exception.BadRequestException;
 import com.example.marketplace.model.User;
 import com.example.marketplace.repository.UserRepository;
+import com.example.marketplace.repository.ShopRepository;
 import com.example.marketplace.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -30,6 +29,9 @@ public class AuthService {
     private JwtUtil jwtUtil;
     @Autowired
     private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private ShopRepository shopRepository;
 
     public AuthResponse register(RegisterRequest request) {
         if (!request.getPassword().equals(request.getConfirmPassword())) {
@@ -93,7 +95,10 @@ public class AuthService {
                 .nicNumber(user.getNicNumber())
                 .createdAt(user.getCreatedAt())
                 .profilePhotoUrl(user.getProfilePhotoUrl())
-                .roles(user.getRoles())
+                .roles(user.getRoles() != null ? user.getRoles() : new HashSet<>())
+                .hasShop(user.getShopId() != null
+                        || (user.getId() != null && shopRepository.existsByUserId(user.getId())))
+                .shopId(user.getShopId())
                 .build();
     }
 }
