@@ -49,11 +49,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/stats/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/search/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         // Swagger/OpenAPI
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Protected Endpoints
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/vehicles").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers("/api/products/**").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/vehicles/*/report").authenticated()
                         .requestMatchers("/api/sellers/apply", "/api/sellers/register-shop",
                                 "/api/sellers/register_shop")
