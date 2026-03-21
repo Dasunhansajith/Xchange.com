@@ -24,4 +24,5 @@ public class UserDto {
     private Set<String> roles;
     private boolean hasShop;
     private String shopId;
+    private Set<String> wishlist;
 }

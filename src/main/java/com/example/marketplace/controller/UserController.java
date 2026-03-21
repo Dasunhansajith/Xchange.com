@@ -19,8 +19,18 @@ public class UserController {
         return ResponseEntity.ok(userService.getProfile(auth.getName()));
     }
 
-    @PutMapping("/me")
-    public ResponseEntity<UserDto> updateMe(@Valid @RequestBody UserDto dto, Authentication auth) {
-        return ResponseEntity.ok(userService.updateProfile(auth.getName(), dto));
+    @PostMapping("/me")
+    public ResponseEntity<UserDto> updateProfile(@Valid @RequestBody UserDto userDto, Authentication auth) {
+        return ResponseEntity.ok(userService.updateProfile(auth.getName(), userDto));
+    }
+
+    @PostMapping("/wishlist/{productId}")
+    public ResponseEntity<UserDto> addToWishlist(@PathVariable String productId, Authentication auth) {
+        return ResponseEntity.ok(userService.addToWishlist(auth.getName(), productId));
+    }
+
+    @DeleteMapping("/wishlist/{productId}")
+    public ResponseEntity<UserDto> removeFromWishlist(@PathVariable String productId, Authentication auth) {
+        return ResponseEntity.ok(userService.removeFromWishlist(auth.getName(), productId));
     }
 }

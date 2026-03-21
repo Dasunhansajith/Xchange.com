@@ -28,15 +28,33 @@ public class UserService {
         return mapToDto(userRepository.save(user));
     }
 
+    public UserDto addToWishlist(String email, String productId) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.getWishlist().add(productId);
+        return mapToDto(userRepository.save(user));
+    }
+
+    public UserDto removeFromWishlist(String email, String productId) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.getWishlist().remove(productId);
+        return mapToDto(userRepository.save(user));
+    }
+
     private UserDto mapToDto(User user) {
         return UserDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .phone(user.getPhone())
+                .address(user.getAddress())
                 .createdAt(user.getCreatedAt())
                 .profilePhotoUrl(user.getProfilePhotoUrl())
                 .roles(user.getRoles())
+                .wishlist(user.getWishlist())
+                .shopId(user.getShopId())
+                .hasShop(user.getShopId() != null)
                 .build();
     }
 }
