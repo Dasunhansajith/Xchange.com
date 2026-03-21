@@ -99,6 +99,7 @@ public class AuthService {
                 .hasShop(user.getShopId() != null
                         || (user.getId() != null && shopRepository.existsByUserId(user.getId())))
                 .shopId(user.getShopId())
+                .wishlist(user.getWishlist())
                 .build();
     }
 }

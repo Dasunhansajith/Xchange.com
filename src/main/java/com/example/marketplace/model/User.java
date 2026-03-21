@@ -35,6 +35,8 @@ public class User implements UserDetails {
     private LocalDateTime createdAt;
     private String profilePhotoUrl;
     private String shopId;
+    @Builder.Default
+    private Set<String> wishlist = new HashSet<>();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
