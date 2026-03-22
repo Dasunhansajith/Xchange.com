@@ -21,6 +21,7 @@ public class Vehicle {
     @Id
     private String id;
     private String sellerId;
+    private String shopName; // Denormalized for display
     private String title;
     private String description;
     private BigDecimal price;

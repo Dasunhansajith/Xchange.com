@@ -45,6 +45,7 @@ public class VehicleDto {
     @NotNull
     private Integer year;
 
+    private String shopName;
     private LocalDateTime createdAt;
     private String status; // ACTIVE, SOLD, DRAFT
 }

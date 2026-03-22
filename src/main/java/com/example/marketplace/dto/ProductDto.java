@@ -23,6 +23,7 @@ public class ProductDto {
     private String category;
     private Integer stockQuantity;
     private List<String> images;
+    private String shopName;
     private LocalDateTime createdAt;
     private String status;
 }

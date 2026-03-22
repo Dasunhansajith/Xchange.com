@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/vehicles").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers("/api/products/**").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers("/api/orders/**").authenticated()
+                        .requestMatchers("/api/notifications/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/vehicles/*/report").authenticated()
                         .requestMatchers("/api/sellers/apply", "/api/sellers/register-shop",
                                 "/api/sellers/register_shop")

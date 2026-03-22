@@ -3,7 +3,9 @@ package com.example.marketplace.service;
 import com.example.marketplace.dto.ProductDto;
 import com.example.marketplace.model.Product;
 import com.example.marketplace.model.User;
+import com.example.marketplace.model.Shop;
 import com.example.marketplace.repository.ProductRepository;
+import com.example.marketplace.repository.ShopRepository;
 import com.example.marketplace.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,13 +22,21 @@ public class ProductService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ShopRepository shopRepository;
+
     public ProductDto createProduct(ProductDto dto, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        String shopName = null;
+        if (user.getShopId() != null) {
+            shopName = shopRepository.findById(user.getShopId()).map(Shop::getShopName).orElse(null);
+        }
 
         Product product = Product.builder()
                 .sellerId(user.getEmail())
                 .shopId(user.getShopId())
+                .shopName(shopName)
                 .name(dto.getName())
                 .description(dto.getDescription())
                 .price(dto.getPrice())
@@ -95,10 +105,17 @@ public class ProductService {
     }
 
     private ProductDto mapToDto(Product product) {
+        String shopName = product.getShopName();
+        if (shopName == null && product.getShopId() != null) {
+            shopName = shopRepository.findById(product.getShopId()).map(Shop::getShopName)
+                    .orElse("Shop #" + product.getShopId().substring(0, 5) + "...");
+        }
+
         return ProductDto.builder()
                 .id(product.getId())
                 .sellerId(product.getSellerId())
                 .shopId(product.getShopId())
+                .shopName(shopName)
                 .name(product.getName())
                 .description(product.getDescription())
                 .price(product.getPrice())
