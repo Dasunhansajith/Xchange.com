@@ -22,6 +22,7 @@ public class Product {
     private String id;
     private String sellerId; // Link to the user (email)
     private String shopId; // Link to the shop
+    private String shopName; // Denormalized for display
     private String name;
     private String description;
     private BigDecimal price;

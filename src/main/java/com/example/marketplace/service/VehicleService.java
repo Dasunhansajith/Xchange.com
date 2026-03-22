@@ -1,8 +1,12 @@
 package com.example.marketplace.service;
 
 import com.example.marketplace.dto.VehicleDto;
+import com.example.marketplace.model.User;
+import com.example.marketplace.model.Shop;
 import com.example.marketplace.model.Vehicle;
 import com.example.marketplace.repository.VehicleRepository;
+import com.example.marketplace.repository.UserRepository;
+import com.example.marketplace.repository.ShopRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,8 +24,15 @@ import java.util.Map;
 public class VehicleService {
     @Autowired
     private VehicleRepository vehicleRepository;
+
     @Autowired
     private MongoTemplate mongoTemplate;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private ShopRepository shopRepository;
+    @Autowired
+    private CategoryService categoryService; // For category names if needed
 
     public Page<VehicleDto> search(Map<String, String> filters, Pageable pageable) {
         Query query = new Query().with(pageable);
@@ -67,8 +78,15 @@ public class VehicleService {
     }
 
     public VehicleDto create(VehicleDto dto, String sellerId) {
+        User user = userRepository.findByEmail(sellerId).orElse(null);
+        String shopName = null;
+        if (user != null && user.getShopId() != null) {
+            shopName = shopRepository.findById(user.getShopId()).map(Shop::getShopName).orElse(null);
+        }
+
         Vehicle vehicle = mapToEntity(dto);
         vehicle.setSellerId(sellerId);
+        vehicle.setShopName(shopName);
         vehicle.setCreatedAt(LocalDateTime.now());
         vehicle.setStatus("ACTIVE"); // Default
         return mapToDto(vehicleRepository.save(vehicle));
@@ -107,9 +125,19 @@ public class VehicleService {
     }
 
     private VehicleDto mapToDto(Vehicle entity) {
+        String shopName = entity.getShopName();
+        if (shopName == null && entity.getSellerId() != null) {
+            // Fallback: look up user and then shop
+            User user = userRepository.findByEmail(entity.getSellerId()).orElse(null);
+            if (user != null && user.getShopId() != null) {
+                shopName = shopRepository.findById(user.getShopId()).map(Shop::getShopName).orElse(null);
+            }
+        }
+
         return VehicleDto.builder()
                 .id(entity.getId())
                 .sellerId(entity.getSellerId())
+                .shopName(shopName != null ? shopName : "Direct Seller")
                 .title(entity.getTitle())
                 .description(entity.getDescription())
                 .price(entity.getPrice())
