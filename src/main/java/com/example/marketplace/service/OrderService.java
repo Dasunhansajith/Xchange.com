@@ -10,9 +10,6 @@ import com.example.marketplace.repository.OrderRepository;
 import com.example.marketplace.repository.ProductRepository;
 import com.example.marketplace.repository.UserRepository;
 import com.example.marketplace.repository.VehicleRepository;
-import com.example.marketplace.repository.OrderRepository;
-import com.example.marketplace.repository.ProductRepository;
-import com.example.marketplace.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -27,10 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-import java.util.List;
-import java.util.Set;
-
-@Service
 public class OrderService {
     @Autowired
     private OrderRepository orderRepository;
@@ -219,8 +212,6 @@ public class OrderService {
 
     public Order placeOrderFromWishlist(String email, String shippingAddress) {
         System.out.println("Placing wishlist order for buyer: " + email);
-
-    public Order placeOrderFromWishlist(String email, String shippingAddress) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         Set<String> wishlist = user.getWishlist();
@@ -289,19 +280,6 @@ public class OrderService {
 
         if (orderItems.isEmpty()) {
             throw new RuntimeException("No valid items found in wishlist or items are out of stock");
-
-        for (String productId : wishlist) {
-            Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new RuntimeException("Product not found: " + productId));
-            
-            orderItems.add(Order.OrderItem.builder()
-                    .productId(productId)
-                    .name(product.getName())
-                    .price(product.getPrice())
-                    .quantity(1)
-                    .build());
-            
-            totalPrice = totalPrice.add(product.getPrice());
         }
 
         Order order = Order.builder()
@@ -311,7 +289,6 @@ public class OrderService {
                 .productName(orderItems.size() > 1
                         ? orderItems.get(0).getName() + " & " + (orderItems.size() - 1) + " others"
                         : orderItems.get(0).getName())
-                .items(orderItems)
                 .totalPrice(totalPrice)
                 .shippingAddress(shippingAddress)
                 .status("PENDING")
@@ -326,11 +303,6 @@ public class OrderService {
         Order saved = orderRepository.save(order);
         notifySellers(saved);
         return saved;
-        // Clear wishlist after order
-        user.getWishlist().clear();
-        userRepository.save(user);
-
-        return orderRepository.save(order);
     }
 
     public List<Order> getMyOrders(String email) {
