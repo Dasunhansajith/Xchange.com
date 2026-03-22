@@ -29,6 +29,11 @@ public class Order {
     private String shippingAddress;
     private String buyerName;
     private String buyerPhone;
+    private List<OrderItem> items;
+    private BigDecimal totalPrice;
+    @Builder.Default
+    private String status = "PENDING"; // PENDING, COMPLETED, CANCELLED
+    private String shippingAddress;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
