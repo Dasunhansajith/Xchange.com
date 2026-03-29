@@ -5,11 +5,13 @@ import com.example.marketplace.model.Product;
 import com.example.marketplace.model.User;
 import com.example.marketplace.model.Notification;
 import com.example.marketplace.model.Vehicle;
+import com.example.marketplace.model.Review;
 import com.example.marketplace.repository.NotificationRepository;
 import com.example.marketplace.repository.OrderRepository;
 import com.example.marketplace.repository.ProductRepository;
 import com.example.marketplace.repository.UserRepository;
 import com.example.marketplace.repository.VehicleRepository;
+import com.example.marketplace.repository.ReviewRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,8 @@ public class OrderService {
     private NotificationRepository notificationRepository;
     @Autowired
     private VehicleRepository vehicleRepository;
+    @Autowired
+    private ReviewRepository reviewRepository;
 
     public Order placeSingleOrder(String email, String productId, int quantity, String shippingAddress,
             String buyerName, String buyerPhone) {
@@ -78,6 +82,7 @@ public class OrderService {
                             .quantity(quantity)
                             .build()))
                     .productName(product.getName())
+                    .productImage(product.getImages() != null && !product.getImages().isEmpty() ? product.getImages().get(0) : null)
                     .totalPrice(totalPrice)
                     .shippingAddress(shippingAddress)
                     .status("PENDING")
@@ -114,6 +119,7 @@ public class OrderService {
                             .quantity(1)
                             .build()))
                     .productName(vehicle.getTitle())
+                    .productImage(vehicle.getImages() != null && !vehicle.getImages().isEmpty() ? vehicle.getImages().get(0) : null)
                     .totalPrice(totalPrice)
                     .shippingAddress(shippingAddress)
                     .status("PENDING")
@@ -221,6 +227,7 @@ public class OrderService {
         List<Order.OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalPrice = BigDecimal.ZERO;
         String firstSellerId = null;
+        String firstProductImage = null;
 
         for (String itemId : wishlist) {
             // Check Product
@@ -248,6 +255,8 @@ public class OrderService {
                     totalPrice = totalPrice.add(product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO);
                     if (firstSellerId == null)
                         firstSellerId = product.getSellerId();
+                    if (firstProductImage == null)
+                        firstProductImage = product.getImages() != null && !product.getImages().isEmpty() ? product.getImages().get(0) : null;
 
                     // Deduct stock
                     product.setStockQuantity(product.getStockQuantity() - 1);
@@ -270,6 +279,8 @@ public class OrderService {
                 totalPrice = totalPrice.add(vehicle.getPrice() != null ? vehicle.getPrice() : BigDecimal.ZERO);
                 if (firstSellerId == null)
                     firstSellerId = vehicle.getSellerId();
+                if (firstProductImage == null)
+                    firstProductImage = vehicle.getImages() != null && !vehicle.getImages().isEmpty() ? vehicle.getImages().get(0) : null;
 
                 // Mark as SOLD
                 vehicle.setStatus("SOLD");
@@ -288,6 +299,7 @@ public class OrderService {
                 .productName(orderItems.size() > 1
                         ? orderItems.get(0).getName() + " & " + (orderItems.size() - 1) + " others"
                         : orderItems.get(0).getName())
+                .productImage(firstProductImage)
                 .totalPrice(totalPrice)
                 .shippingAddress(shippingAddress)
                 .status("PENDING")
@@ -304,7 +316,126 @@ public class OrderService {
         return saved;
     }
 
+    public Order submitReview(String orderId, String buyerEmail, Integer rating, String review) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (!order.getBuyerId().equals(buyerEmail)) {
+            throw new RuntimeException("Only the buyer can review this order");
+        }
+
+        String productId = order.getItems().get(0).getProductId();
+
+        // Prevent duplicate reviews — update existing if it exists
+        java.util.Optional<Review> existing = reviewRepository.findByOrderId(orderId);
+        if (existing.isPresent()) {
+            // Delegate to edit path
+            return editReview(orderId, buyerEmail, rating, review);
+        }
+
+        order.setRating(rating);
+        order.setReview(review);
+        order.setUpdatedAt(LocalDateTime.now());
+        Order savedOrder = orderRepository.save(order);
+
+        // Save to the Review collection
+        Review reviewDoc = Review.builder()
+                .orderId(orderId)
+                .productId(productId)
+                .productName(order.getProductName())
+                .buyerId(buyerEmail)
+                .buyerName(order.getBuyerName())
+                .rating(rating)
+                .comment(review)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        reviewRepository.save(reviewDoc);
+
+        // Recalculate product rating from scratch
+        recalculateProductRating(productId);
+
+        return savedOrder;
+    }
+
+    public Order editReview(String orderId, String buyerEmail, Integer rating, String comment) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (!order.getBuyerId().equals(buyerEmail)) {
+            throw new RuntimeException("Unauthorized: only the buyer can edit this review");
+        }
+
+        String productId = order.getItems().get(0).getProductId();
+
+        // Update order fields
+        order.setRating(rating);
+        order.setReview(comment);
+        order.setUpdatedAt(LocalDateTime.now());
+        Order savedOrder = orderRepository.save(order);
+
+        // Update the Review document
+        Review reviewDoc = reviewRepository.findByOrderId(orderId)
+                .orElseGet(() -> Review.builder()
+                        .orderId(orderId)
+                        .productId(productId)
+                        .productName(order.getProductName())
+                        .buyerId(buyerEmail)
+                        .buyerName(order.getBuyerName())
+                        .createdAt(LocalDateTime.now())
+                        .build());
+
+        reviewDoc.setRating(rating);
+        reviewDoc.setComment(comment);
+        reviewDoc.setUpdatedAt(LocalDateTime.now());
+        reviewRepository.save(reviewDoc);
+
+        // Recalculate product rating from scratch
+        recalculateProductRating(productId);
+
+        return savedOrder;
+    }
+
+    public void deleteReview(String orderId, String buyerEmail) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        if (!order.getBuyerId().equals(buyerEmail)) {
+            throw new RuntimeException("Unauthorized: only the buyer can delete this review");
+        }
+
+        String productId = order.getItems().get(0).getProductId();
+
+        // Clear review fields on the order
+        order.setRating(null);
+        order.setReview(null);
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        // Remove the Review document
+        reviewRepository.findByOrderId(orderId).ifPresent(reviewRepository::delete);
+
+        // Recalculate product rating from scratch
+        recalculateProductRating(productId);
+    }
+
+    private void recalculateProductRating(String productId) {
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product == null) return;
+
+        java.util.List<Review> reviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(productId);
+        int count = reviews.size();
+        double average = reviews.stream()
+                .mapToInt(Review::getRating)
+                .average()
+                .orElse(0.0);
+
+        product.setReviewCount(count);
+        product.setAverageRating(count > 0 ? Math.round(average * 10.0) / 10.0 : 0.0);
+        productRepository.save(product);
+    }
+
     public List<Order> getMyOrders(String email) {
-        return orderRepository.findByBuyerId(email);
+        return orderRepository.findByBuyerIdOrderByCreatedAtDesc(email);
     }
 }
