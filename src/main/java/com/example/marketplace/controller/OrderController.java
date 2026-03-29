@@ -47,6 +47,26 @@ public class OrderController {
         return ResponseEntity.ok(orderService.placeOrderFromWishlist(auth.getName(), shippingAddress));
     }
 
+    @PostMapping("/{orderId}/review")
+    public ResponseEntity<Order> submitReview(@PathVariable String orderId, @RequestBody Map<String, Object> payload, Authentication auth) {
+        Integer rating = payload.get("rating") instanceof Number ? ((Number) payload.get("rating")).intValue() : null;
+        String review = (String) payload.get("review");
+        return ResponseEntity.ok(orderService.submitReview(orderId, auth.getName(), rating, review));
+    }
+
+    @PutMapping("/{orderId}/review")
+    public ResponseEntity<Order> editReview(@PathVariable String orderId, @RequestBody Map<String, Object> payload, Authentication auth) {
+        Integer rating = payload.get("rating") instanceof Number ? ((Number) payload.get("rating")).intValue() : null;
+        String comment = (String) payload.get("review");
+        return ResponseEntity.ok(orderService.editReview(orderId, auth.getName(), rating, comment));
+    }
+
+    @DeleteMapping("/{orderId}/review")
+    public ResponseEntity<Void> deleteReview(@PathVariable String orderId, Authentication auth) {
+        orderService.deleteReview(orderId, auth.getName());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/me")
     public ResponseEntity<List<Order>> getMyOrders(Authentication auth) {
         return ResponseEntity.ok(orderService.getMyOrders(auth.getName()));

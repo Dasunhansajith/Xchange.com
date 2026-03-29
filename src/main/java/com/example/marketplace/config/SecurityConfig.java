@@ -65,6 +65,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/sellers/applications").hasRole("ADMIN")
                         .requestMatchers("/api/fraud/**").authenticated() // Some might be admin only, handled in
                                                                           // controllers
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated()
                         .anyRequest().permitAll())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

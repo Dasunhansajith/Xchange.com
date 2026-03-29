@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.example.marketplace.repository.ReviewRepository;
 
 @Service
 public class ProductService {
@@ -24,6 +25,9 @@ public class ProductService {
 
     @Autowired
     private ShopRepository shopRepository;
+
+    @Autowired
+    private ReviewRepository reviewRepository;
 
     public ProductDto createProduct(ProductDto dto, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -49,25 +53,25 @@ public class ProductService {
                 .build();
 
         Product saved = productRepository.save(product);
-        return mapToDto(saved);
+        return mapToDto(saved, false);
     }
 
     public List<ProductDto> getAllProducts() {
         return productRepository.findAll().stream()
-                .map(this::mapToDto)
+                .map(p -> mapToDto(p, false))
                 .collect(Collectors.toList());
     }
 
     public List<ProductDto> getProductsBySeller(String userEmail) {
         return productRepository.findBySellerId(userEmail).stream()
-                .map(this::mapToDto)
+                .map(p -> mapToDto(p, false))
                 .collect(Collectors.toList());
     }
 
     public ProductDto getProductById(String id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
-        return mapToDto(product);
+        return mapToDto(product, true);
     }
 
     public ProductDto updateProduct(String id, ProductDto dto, String userEmail) {
@@ -89,7 +93,7 @@ public class ProductService {
         product.setUpdatedAt(LocalDateTime.now());
 
         Product updated = productRepository.save(product);
-        return mapToDto(updated);
+        return mapToDto(updated, false);
     }
 
     public void deleteProduct(String id, String userEmail) {
@@ -104,11 +108,16 @@ public class ProductService {
         productRepository.delete(product);
     }
 
-    private ProductDto mapToDto(Product product) {
+    private ProductDto mapToDto(Product product, boolean includeReviews) {
         String shopName = product.getShopName();
         if (shopName == null && product.getShopId() != null) {
             shopName = shopRepository.findById(product.getShopId()).map(Shop::getShopName)
                     .orElse("Shop #" + product.getShopId().substring(0, 5) + "...");
+        }
+
+        List<com.example.marketplace.model.Review> reviews = null;
+        if (includeReviews) {
+            reviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(product.getId());
         }
 
         return ProductDto.builder()
@@ -124,6 +133,9 @@ public class ProductService {
                 .images(product.getImages())
                 .createdAt(product.getCreatedAt())
                 .status(product.getStatus())
+                .averageRating(product.getAverageRating())
+                .reviewCount(product.getReviewCount())
+                .reviews(reviews)
                 .build();
     }
 }

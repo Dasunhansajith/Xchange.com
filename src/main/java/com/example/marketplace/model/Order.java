@@ -23,12 +23,15 @@ public class Order {
     private String sellerId; // email of the seller - for single product orders or per-item
     private List<OrderItem> items;
     private String productName; // For quick display
+    private String productImage; // For quick display
     private BigDecimal totalPrice;
     @Builder.Default
     private String status = "PENDING"; // PENDING, ACCEPTED, DECLINED, COMPLETED, CANCELLED
     private String shippingAddress;
     private String buyerName;
     private String buyerPhone;
+    private Integer rating; // 1-5 stars
+    private String review;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
