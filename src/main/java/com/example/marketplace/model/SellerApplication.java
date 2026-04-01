@@ -19,8 +19,15 @@ public class SellerApplication {
     @Id
     private String id;
     private String userId;
-    private String businessName;
-    private List<String> documents;
+    private String userName; // name of the user who created the store
+    private String shopName;
+    private List<String> shopCategories;
+    private String district;
+    private String city;
+    private String acceptedPaymentMethods;
     private String status; // PENDING, APPROVED, REJECTED
     private LocalDateTime appliedAt;
+    private LocalDateTime reviewedAt;
+    private String reviewedBy; // admin ID who reviewed
+    private String rejectionReason; // reason if rejected
 }
