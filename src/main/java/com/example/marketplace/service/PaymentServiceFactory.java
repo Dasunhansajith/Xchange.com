@@ -4,7 +4,6 @@ import com.example.marketplace.service.impl.BankTransferPaymentService;
 import com.example.marketplace.service.impl.CashOnDeliveryPaymentService;
 import com.example.marketplace.service.impl.StripePaymentService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -48,7 +47,6 @@ public class PaymentServiceFactory {
      * Autowiring dependencies ensures all payment services are registered
      * automatically when the application starts.
      */
-    @Autowired
     public PaymentServiceFactory(
         StripePaymentService stripePaymentService,
         CashOnDeliveryPaymentService cashOnDeliveryPaymentService,

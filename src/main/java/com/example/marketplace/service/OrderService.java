@@ -25,6 +25,7 @@ import java.util.Set;
 
 @Service
 @Transactional
+@SuppressWarnings("null")
 public class OrderService {
     @Autowired
     private OrderRepository orderRepository;

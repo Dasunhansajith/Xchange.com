@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@SuppressWarnings("null")
 public class AuthService {
     @Autowired
     private UserRepository userRepository;

@@ -3,6 +3,9 @@ package com.example.marketplace.controller;
 import com.example.marketplace.dto.UserDto;
 import com.example.marketplace.service.UserService;
 import jakarta.validation.Valid;
+
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -13,6 +16,11 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     @Autowired
     private UserService userService;
+
+    @GetMapping
+    public ResponseEntity<java.util.List<UserDto>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
+    }
 
     @GetMapping("/me")
     public ResponseEntity<UserDto> getMe(Authentication auth) {
