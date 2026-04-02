@@ -2,10 +2,19 @@ package com.example.marketplace.controller;
 
 import com.example.marketplace.model.Order;
 import com.example.marketplace.service.OrderService;
+import com.example.marketplace.service.OrderTrackingService;
+import com.example.marketplace.dto.OrderTrackingDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
@@ -15,6 +24,9 @@ import java.util.Map;
 public class OrderController {
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private OrderTrackingService trackingService;
 
     @PostMapping("/place")
     public ResponseEntity<Order> placeSingleOrder(@RequestBody Map<String, Object> payload, Authentication auth) {
@@ -72,3 +84,4 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getMyOrders(auth.getName()));
     }
 }
+

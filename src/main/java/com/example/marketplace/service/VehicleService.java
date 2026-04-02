@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@SuppressWarnings("null")
 public class VehicleService {
     @Autowired
     private VehicleRepository vehicleRepository;
@@ -32,6 +31,8 @@ public class VehicleService {
     private UserRepository userRepository;
     @Autowired
     private ShopRepository shopRepository;
+    @Autowired
+    private CategoryService categoryService; // For category names if needed
 
     public Page<VehicleDto> search(Map<String, String> filters, Pageable pageable) {
         Query query = new Query().with(pageable);

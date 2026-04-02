@@ -42,13 +42,6 @@ public class UserService {
         return mapToDto(userRepository.save(user));
     }
 
-    public java.util.List<UserDto> getAllUsers() {
-        return userRepository.findAll()
-                .stream()
-                .map(this::mapToDto)
-                .collect(java.util.stream.Collectors.toList());
-    }
-
     private UserDto mapToDto(User user) {
         return UserDto.builder()
                 .id(user.getId())

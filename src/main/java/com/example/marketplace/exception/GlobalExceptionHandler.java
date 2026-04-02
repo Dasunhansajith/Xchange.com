@@ -39,6 +39,30 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
+    // ✅ CHANGE: Handle TrackingNotFoundException
+    @ExceptionHandler(TrackingNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNotFound(TrackingNotFoundException ex) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    // ✅ CHANGE: Handle InvalidStageTransitionException
+    @ExceptionHandler(InvalidStageTransitionException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidStage(InvalidStageTransitionException ex) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // ✅ CHANGE: Handle ConflictException (409)
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, String>> handleConflict(ConflictException ex) {
+        Map<String, String> body = new HashMap<>();
+        body.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleOther(Exception ex) {
         ex.printStackTrace(); // Log the error to console

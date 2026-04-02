@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 import com.example.marketplace.repository.ReviewRepository;
 
 @Service
-@SuppressWarnings("null")
 public class ProductService {
     @Autowired
     private ProductRepository productRepository;

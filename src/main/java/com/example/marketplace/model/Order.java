@@ -10,6 +10,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
+
 
 @Data
 @Builder
@@ -34,6 +37,16 @@ public class Order {
     private String review;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // ===== Tracking Fields ("One Row" structure) =====
+    private TrackingStatus trackingStatus;
+    
+    @Builder.Default
+    private List<TrackingStage> trackingStages = new java.util.ArrayList<>();
+    
+    private String courierName;
+    private String trackingNumber;
+    private boolean deliveryConfirmed;
 
     // ===== Payment Tracking Fields =====
     /**
@@ -67,6 +80,20 @@ public class Order {
      * Can store payment-related details like receipt URLs, etc.
      */
     private String paymentMetadata;
+
+    public void initTracking() {
+        this.trackingStatus = TrackingStatus.PLACED;
+        this.trackingStages = Arrays.asList(
+            new TrackingStage(TrackingStatus.PLACED, true, LocalDateTime.now()),
+            new TrackingStage(TrackingStatus.PACKED, false, null),
+            new TrackingStage(TrackingStatus.SHIPPED, false, null),
+            new TrackingStage(TrackingStatus.OUT_FOR_DELIVERY, false, null),
+            new TrackingStage(TrackingStatus.DELIVERED, false, null)
+        );
+        this.deliveryConfirmed = false;
+        this.courierName = "";
+        this.trackingNumber = "";
+    }
 
     @Data
     @Builder

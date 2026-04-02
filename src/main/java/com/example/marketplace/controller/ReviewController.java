@@ -14,7 +14,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reviews")
-@SuppressWarnings("null")
 public class ReviewController {
 
     @Autowired

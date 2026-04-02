@@ -2,16 +2,17 @@ package com.example.marketplace.service;
 
 import com.example.marketplace.model.Order;
 import com.example.marketplace.model.Product;
+import com.example.marketplace.model.Vehicle;
 import com.example.marketplace.model.User;
 import com.example.marketplace.model.Notification;
-import com.example.marketplace.model.Vehicle;
 import com.example.marketplace.model.Review;
-import com.example.marketplace.repository.NotificationRepository;
 import com.example.marketplace.repository.OrderRepository;
 import com.example.marketplace.repository.ProductRepository;
 import com.example.marketplace.repository.UserRepository;
+import com.example.marketplace.repository.NotificationRepository;
 import com.example.marketplace.repository.VehicleRepository;
 import com.example.marketplace.repository.ReviewRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +26,6 @@ import java.util.Set;
 
 @Service
 @Transactional
-@SuppressWarnings("null")
 public class OrderService {
     @Autowired
     private OrderRepository orderRepository;
@@ -98,6 +98,7 @@ public class OrderService {
             }
             productRepository.save(product);
 
+            order.initTracking();
             Order saved = orderRepository.save(order);
             notifySellers(saved);
             return saved;
@@ -132,6 +133,7 @@ public class OrderService {
             vehicle.setStatus("SOLD");
             vehicleRepository.save(vehicle);
 
+            order.initTracking();
             Order saved = orderRepository.save(order);
             notifySellers(saved);
             return saved;
@@ -307,6 +309,8 @@ public class OrderService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+        
+        order.initTracking();
 
         // Clear wishlist
         user.getWishlist().clear();
@@ -440,3 +444,4 @@ public class OrderService {
         return orderRepository.findByBuyerIdOrderByCreatedAtDesc(email);
     }
 }
+
