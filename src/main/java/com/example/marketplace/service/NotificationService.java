@@ -42,6 +42,10 @@ public class NotificationService {
         return notificationRepository.save(notification);
     }
 
+    public long getUnreadCount(String userId) {
+        return notificationRepository.countByRecipientIdAndIsRead(userId, false);
+    }
+
     public void deleteNotification(String notificationId) {
         notificationRepository.deleteById(notificationId);
     }

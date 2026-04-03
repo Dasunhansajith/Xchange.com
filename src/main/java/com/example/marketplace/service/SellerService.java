@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 
 @Service
+@SuppressWarnings("null")
 public class SellerService {
         @Autowired
         private SellerApplicationRepository repository;
@@ -31,8 +32,15 @@ public class SellerService {
         @Autowired
         private JwtUtil jwtUtil;
 
+        @Autowired
+        private NotificationService notificationService;
+
         public SellerApplication apply(SellerApplication application, String userId) {
-                application.setUserId(userId);
+                // userId is actually email from auth.getName(), so lookup the actual user ID
+                User user = userRepository.findByEmail(userId)
+                        .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+                application.setUserId(user.getId());
+                application.setUserName(user.getName());
                 application.setStatus("PENDING");
                 application.setAppliedAt(LocalDateTime.now());
                 return repository.save(application);
@@ -40,6 +48,98 @@ public class SellerService {
 
         public List<SellerApplication> getApplications() {
                 return repository.findAll();
+        }
+
+        public List<SellerApplication> getApprovedApplications() {
+                return repository.findByStatus("APPROVED");
+        }
+
+        public List<SellerApplication> getPendingApplications() {
+                return repository.findByStatus("PENDING");
+        }
+
+        public List<SellerApplication> getUserApplications(String userId) {
+                return repository.findByUserId(userId);
+        }
+
+        public SellerApplication approveApplication(String applicationId, String adminId) {
+                SellerApplication app = repository.findById(applicationId)
+                        .orElseThrow(() -> new RuntimeException("Application not found"));
+
+                // Get the user
+                User user = userRepository.findById(app.getUserId())
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+
+                // Create and save shop
+                List<String> paymentMethods = app.getAcceptedPaymentMethods() != null
+                        ? java.util.Arrays.asList(app.getAcceptedPaymentMethods().split(","))
+                        : java.util.Collections.emptyList();
+                
+                Shop shop = Shop.builder()
+                        .userId(user.getId())
+                        .shopName(app.getShopName())
+                        .shopCategories(app.getShopCategories())
+                        .district(app.getDistrict())
+                        .city(app.getCity())
+                        .acceptedPaymentMethods(paymentMethods)
+                        .build();
+
+                shop = shopRepository.save(shop);
+
+                // Add ROLE_SELLER to user and set shopId
+                Set<String> roles = user.getRoles();
+                if (roles == null) {
+                        roles = new java.util.HashSet<>();
+                } else {
+                        roles = new java.util.HashSet<>(roles);
+                }
+                roles.add("ROLE_SELLER");
+                user.setRoles(roles);
+                user.setShopId(shop.getId());
+                userRepository.save(user);
+
+                // Update application status
+                app.setStatus("APPROVED");
+                app.setReviewedAt(LocalDateTime.now());
+                app.setReviewedBy(adminId);
+                app = repository.save(app);
+
+                // Send notification to user
+                notificationService.createNotification(
+                        user.getEmail(),
+                        "Seller Application Approved ✅",
+                        "Congratulations! Your application to become a seller has been approved. You can now list products on our platform.",
+                        "SELLER_APPLICATION_APPROVED",
+                        app.getId()
+                );
+
+                return app;
+        }
+
+        public SellerApplication rejectApplication(String applicationId, String adminId, String rejectionReason) {
+                SellerApplication app = repository.findById(applicationId)
+                        .orElseThrow(() -> new RuntimeException("Application not found"));
+
+                User user = userRepository.findById(app.getUserId())
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+
+                // Update application status
+                app.setStatus("REJECTED");
+                app.setReviewedAt(LocalDateTime.now());
+                app.setReviewedBy(adminId);
+                app.setRejectionReason(rejectionReason);
+                app = repository.save(app);
+
+                // Send notification to user
+                notificationService.createNotification(
+                        user.getEmail(),
+                        "Seller Application Declined ❌",
+                        "Unfortunately, your application to become a seller has been declined. Reason: " + rejectionReason,
+                        "SELLER_APPLICATION_REJECTED",
+                        app.getId()
+                );
+
+                return app;
         }
 
         public void updateStatus(String id, String status) {
@@ -120,3 +220,4 @@ public class SellerService {
                                 .build();
         }
 }
+

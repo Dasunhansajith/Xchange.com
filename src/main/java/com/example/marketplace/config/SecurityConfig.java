@@ -29,8 +29,10 @@ import java.util.Arrays;
 public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService userDetailsService;
+
     @Autowired
     private JwtAuthFilter jwtAuthFilter;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -42,6 +44,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public Endpoints
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/admin/test").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/vehicles/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ads/active").permitAll()
@@ -49,36 +52,51 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pages/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/stats/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/search/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                        // 🔐 Require authentication for Tracking (for Principal injection)
-                        .requestMatchers("/api/orders/*/tracking/**").authenticated()
                         // Swagger/OpenAPI
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        // Protected Endpoints
-                        .requestMatchers("/api/users/me").authenticated()
+
+                        // 🔐 Require authentication for Tracking (for Principal injection)
+                        .requestMatchers("/api/orders/*/tracking/**").authenticated()
+
+                        // Admin Endpoints
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Users Endpoints (all JWT protected) - match both base path and sub-paths
+                        .requestMatchers("/api/users", "/api/users/**").authenticated()
+
+                        // Seller / Product Endpoints
                         .requestMatchers("/api/vehicles").hasAnyRole("SELLER", "ADMIN")
-                        .requestMatchers("/api/products/**").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/products").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyRole("SELLER", "ADMIN")
+
+                        // Other protected endpoints
                         .requestMatchers("/api/orders/**").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/vehicles/*/report").authenticated()
                         .requestMatchers("/api/sellers/apply", "/api/sellers/register-shop",
-                                "/api/sellers/register_shop")
-                        .authenticated()
+                                "/api/sellers/register_shop").authenticated()
                         .requestMatchers("/api/sellers/applications").hasRole("ADMIN")
-                        .requestMatchers("/api/fraud/**").authenticated() // Some might be admin only, handled in
-                                                                          // controllers
+                        .requestMatchers("/api/fraud/**").authenticated()
+
+                        // Reviews
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated()
-                        .anyRequest().permitAll())
+
+                        // All other requests
+                        .anyRequest().authenticated()
+                )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Use allowedOriginPatterns for broader compatibility in development
         configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
