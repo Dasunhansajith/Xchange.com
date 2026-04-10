@@ -1,7 +1,9 @@
 package com.example.marketplace.controller;
 
 import com.example.marketplace.model.SellerApplication;
+import com.example.marketplace.model.Order;
 import com.example.marketplace.service.SellerService;
+import com.example.marketplace.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,6 +17,9 @@ import java.util.Map;
 public class AdminController {
     @Autowired
     private SellerService sellerService;
+    
+    @Autowired
+    private OrderService orderService;
 
     @GetMapping("/hello")
     public String hello() {
@@ -47,5 +52,10 @@ public class AdminController {
         String rejectionReason = request.getOrDefault("reason", "Your application does not meet our requirements");
         SellerApplication rejected = sellerService.rejectApplication(applicationId, auth.getName(), rejectionReason);
         return ResponseEntity.ok(rejected);
+    }
+
+    @GetMapping("/orders")
+    public ResponseEntity<List<Order>> getAllOrders() {
+        return ResponseEntity.ok(orderService.getAllOrders());
     }
 }
