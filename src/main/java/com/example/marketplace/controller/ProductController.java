@@ -47,9 +47,9 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SELLER')")
+    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
     public ResponseEntity<Void> deleteProduct(@PathVariable String id, Authentication auth) {
-        productService.deleteProduct(id, auth.getName());
+        productService.deleteProduct(id, auth);
         return ResponseEntity.noContent().build();
     }
 }

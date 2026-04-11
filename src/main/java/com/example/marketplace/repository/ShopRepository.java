@@ -9,5 +9,6 @@ import java.util.Optional;
 @Repository
 public interface ShopRepository extends MongoRepository<Shop, String> {
     Optional<Shop> findByUserId(String userId);
+    java.util.List<Shop> findAllByUserId(String userId);
     boolean existsByUserId(String userId);
 }
