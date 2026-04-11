@@ -8,6 +8,7 @@ import com.example.marketplace.repository.ProductRepository;
 import com.example.marketplace.repository.ShopRepository;
 import com.example.marketplace.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,9 @@ public class ProductService {
 
     @Autowired
     private ReviewRepository reviewRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     public ProductDto createProduct(ProductDto dto, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -97,13 +101,32 @@ public class ProductService {
         return mapToDto(updated, false);
     }
 
-    public void deleteProduct(String id, String userEmail) {
+    public void deleteProduct(String id, Authentication auth) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        // Check if the user is the owner
-        if (!product.getSellerId().equals(userEmail)) {
+        // Check if user is ADMIN or the owner
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(ga -> ga.getAuthority().equals("ROLE_ADMIN"));
+        
+        if (!isAdmin && !product.getSellerId().equals(auth.getName())) {
             throw new RuntimeException("You are not authorized to delete this product");
+        }
+
+        // Send notification to seller if admin is deleting the product
+        if (isAdmin && !product.getSellerId().equals(auth.getName())) {
+            String sellerEmail = product.getSellerId();
+            User seller = userRepository.findByEmail(sellerEmail).orElse(null);
+            
+            if (seller != null) {
+                notificationService.createNotification(
+                    sellerEmail,
+                    "Product Removed by Admin",
+                    "Your product '" + product.getName() + "' has been removed from the marketplace by an administrator.",
+                    "PRODUCT_DELETED_BY_ADMIN",
+                    product.getId()
+                );
+            }
         }
 
         productRepository.delete(product);

@@ -443,5 +443,9 @@ public class OrderService {
     public List<Order> getMyOrders(String email) {
         return orderRepository.findByBuyerIdOrderByCreatedAtDesc(email);
     }
+
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
 }
 
