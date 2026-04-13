@@ -212,10 +212,20 @@ public class OrderService {
     }
 
     public List<Order> getOrdersForSeller(String sellerEmail) {
+        if (sellerEmail == null) {
+            System.err.println("Attempted to fetch orders for null sellerEmail");
+            return Collections.emptyList();
+        }
         System.out.println("Fetching orders for seller: " + sellerEmail);
-        List<Order> orders = orderRepository.findBySellerIdOrderByCreatedAtDesc(sellerEmail);
-        System.out.println("Found " + orders.size() + " orders for " + sellerEmail);
-        return orders;
+        try {
+            List<Order> orders = orderRepository.findBySellerIdOrderByCreatedAtDesc(sellerEmail);
+            System.out.println("Found " + (orders != null ? orders.size() : 0) + " orders for " + sellerEmail);
+            return orders != null ? orders : Collections.emptyList();
+        } catch (Exception e) {
+            System.err.println("Error fetching orders for seller " + sellerEmail + ": " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to fetch seller orders", e);
+        }
     }
 
     public Order placeOrderFromWishlist(String email, String shippingAddress) {
@@ -442,10 +452,6 @@ public class OrderService {
 
     public List<Order> getMyOrders(String email) {
         return orderRepository.findByBuyerIdOrderByCreatedAtDesc(email);
-    }
-
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
     }
 }
 

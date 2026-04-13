@@ -22,6 +22,15 @@ public class ProductController {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
+    @GetMapping("/filter")
+    public ResponseEntity<org.springframework.data.domain.Page<ProductDto>> filterProducts(
+            @RequestParam(required = false) String district,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return ResponseEntity.ok(productService.filterProducts(district, pageable));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ProductDto> getProductById(@PathVariable String id) {
         return ResponseEntity.ok(productService.getProductById(id));
@@ -30,6 +39,15 @@ public class ProductController {
     @GetMapping("/seller/me")
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<List<ProductDto>> getMyProducts(Authentication auth) {
+        return ResponseEntity.ok(productService.getProductsBySeller(auth.getName()));
+    }
+
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<ProductDto>> getMyProductsAlternative(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new org.springframework.security.access.AccessDeniedException("User must be authenticated");
+        }
         return ResponseEntity.ok(productService.getProductsBySeller(auth.getName()));
     }
 
@@ -47,9 +65,9 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SELLER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<Void> deleteProduct(@PathVariable String id, Authentication auth) {
-        productService.deleteProduct(id, auth);
+        productService.deleteProduct(id, auth.getName());
         return ResponseEntity.noContent().build();
     }
 }

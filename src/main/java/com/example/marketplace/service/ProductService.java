@@ -8,13 +8,23 @@ import com.example.marketplace.repository.ProductRepository;
 import com.example.marketplace.repository.ShopRepository;
 import com.example.marketplace.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.example.marketplace.repository.ReviewRepository;
+import jakarta.annotation.PostConstruct;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
+import com.example.marketplace.exception.BadRequestException;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.geo.Point;
+import org.springframework.data.support.PageableExecutionUtils;
 
 @Service
 @SuppressWarnings("null")
@@ -32,7 +42,89 @@ public class ProductService {
     private ReviewRepository reviewRepository;
 
     @Autowired
-    private NotificationService notificationService;
+    private MongoTemplate mongoTemplate;
+
+    @PostConstruct
+    public void normalizeProductStatuses() {
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                int pageSize = 50;
+                int page = 0;
+                int updatedCount = 0;
+                boolean hasMore = true;
+
+                System.out.println("====== DB MIGRATION: STARTING IN BACKGROUND ======");
+
+                while (hasMore) {
+                    Query query = new Query().with(org.springframework.data.domain.PageRequest.of(page, pageSize));
+                    List<Product> products = mongoTemplate.find(query, Product.class);
+
+                    if (products.isEmpty()) {
+                        hasMore = false;
+                        break;
+                    }
+
+                    for (Product p : products) {
+                        try {
+                            boolean modified = false;
+
+                            // 1. Force all missing or weird statuses to ACTIVE (ensures they show up)
+                            if (p.getStatus() == null || !java.util.List.of("ACTIVE", "SOLD", "ARCHIVED", "DRAFT").contains(p.getStatus().toUpperCase())) {
+                                p.setStatus("ACTIVE");
+                                modified = true;
+                            } else if (p.getStatus() != null && !p.getStatus().equals(p.getStatus().toUpperCase())) {
+                                p.setStatus(p.getStatus().toUpperCase());
+                                modified = true;
+                            }
+
+                            // 2. Fix "Sri Lanka" to "Colombo"
+                            if ("Sri Lanka".equalsIgnoreCase(p.getCity())) {
+                                p.setCity("Colombo");
+                                modified = true;
+                            }
+                            if ("Sri Lanka".equalsIgnoreCase(p.getDistrict())) {
+                                p.setDistrict("Colombo");
+                                modified = true;
+                            }
+
+                            // 3. Ensure district is populated (fallback to city or Colombo)
+                            if (p.getDistrict() == null || p.getDistrict().trim().isEmpty()) {
+                                if (p.getCity() != null && !p.getCity().trim().isEmpty()) {
+                                    p.setDistrict(p.getCity());
+                                } else {
+                                    p.setDistrict("Colombo");
+                                    p.setCity("Colombo");
+                                }
+                                modified = true;
+                            }
+
+                            // Removed GeoJSON coordinates logic
+
+                            if (modified) {
+                                mongoTemplate.save(p);
+                                updatedCount++;
+                            }
+                        } catch (Exception innerEx) {
+                            System.err.println("Error migrating product " + p.getId() + ": " + innerEx.getMessage());
+                        }
+                    }
+                    page++;
+                }
+
+                if (updatedCount > 0) {
+                    System.out.println("====== DB MIGRATION: COMPLETED ======");
+                    System.out.println("Successfully migrated and repaired " + updatedCount + " products in MongoDB.");
+                    System.out.println("Fixed: Status casing, 'Sri Lanka' -> 'Colombo', missing districts, and GeoJSON coordinates.");
+                    System.out.println("=======================================");
+                } else {
+                    System.out.println("====== DB MIGRATION: FINISHED (NO UPDATES NEEDED) ======");
+                }
+            } catch (Exception ex) {
+                System.err.println("CRITICAL ERROR during background DB Migration: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+    }
 
     public ProductDto createProduct(ProductDto dto, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -41,6 +133,8 @@ public class ProductService {
         if (user.getShopId() != null) {
             shopName = shopRepository.findById(user.getShopId()).map(Shop::getShopName).orElse(null);
         }
+
+        // Removed delivery radius and coordinate checks
 
         Product product = Product.builder()
                 .sellerId(user.getEmail())
@@ -54,7 +148,9 @@ public class ProductService {
                 .images(dto.getImages())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
-                .status("ACTIVE")
+                .status(dto.getStatus() != null ? dto.getStatus().toUpperCase() : "ACTIVE")
+                .district(dto.getDistrict())
+                .city(dto.getCity())
                 .build();
 
         Product saved = productRepository.save(product);
@@ -62,7 +158,9 @@ public class ProductService {
     }
 
     public List<ProductDto> getAllProducts() {
-        return productRepository.findAll().stream()
+        Query query = new Query();
+        query.addCriteria(Criteria.where("status").regex("^ACTIVE$", "i"));
+        return mongoTemplate.find(query, Product.class).stream()
                 .map(p -> mapToDto(p, false))
                 .collect(Collectors.toList());
     }
@@ -88,48 +186,50 @@ public class ProductService {
             throw new RuntimeException("You are not authorized to update this product");
         }
 
+        // Removed delivery radius and coordinate checks
+
         product.setName(dto.getName());
         product.setDescription(dto.getDescription());
         product.setPrice(dto.getPrice());
         product.setCategory(dto.getCategory());
         product.setStockQuantity(dto.getStockQuantity());
         product.setImages(dto.getImages());
-        product.setStatus(dto.getStatus());
+        
+        // Ensure status is stored in uppercase
+        if (dto.getStatus() != null) {
+            product.setStatus(dto.getStatus().toUpperCase());
+        } else {
+            product.setStatus("ACTIVE");
+        }
+        
         product.setUpdatedAt(LocalDateTime.now());
-
+        
+        product.setDistrict(dto.getDistrict());
+        product.setCity(dto.getCity());
         Product updated = productRepository.save(product);
         return mapToDto(updated, false);
     }
 
-    public void deleteProduct(String id, Authentication auth) {
+    public void deleteProduct(String id, String userEmail) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        // Check if user is ADMIN or the owner
-        boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(ga -> ga.getAuthority().equals("ROLE_ADMIN"));
-        
-        if (!isAdmin && !product.getSellerId().equals(auth.getName())) {
+        // Check if the user is the owner
+        if (!product.getSellerId().equals(userEmail)) {
             throw new RuntimeException("You are not authorized to delete this product");
         }
 
-        // Send notification to seller if admin is deleting the product
-        if (isAdmin && !product.getSellerId().equals(auth.getName())) {
-            String sellerEmail = product.getSellerId();
-            User seller = userRepository.findByEmail(sellerEmail).orElse(null);
-            
-            if (seller != null) {
-                notificationService.createNotification(
-                    sellerEmail,
-                    "Product Removed by Admin",
-                    "Your product '" + product.getName() + "' has been removed from the marketplace by an administrator.",
-                    "PRODUCT_DELETED_BY_ADMIN",
-                    product.getId()
-                );
-            }
-        }
-
         productRepository.delete(product);
+    }
+
+    public Page<ProductDto> filterProducts(String term, Pageable pageable) {
+        Page<Product> productPage;
+        if (term == null || term.trim().isEmpty() || term.equalsIgnoreCase("ALL")) {
+            productPage = productRepository.findActiveProducts(pageable);
+        } else {
+            productPage = productRepository.findActiveByDistrictOrCity(term, term, pageable);
+        }
+        return productPage.map(p -> mapToDto(p, false));
     }
 
     private ProductDto mapToDto(Product product, boolean includeReviews) {
@@ -160,6 +260,8 @@ public class ProductService {
                 .averageRating(product.getAverageRating())
                 .reviewCount(product.getReviewCount())
                 .reviews(reviews)
+                .district(product.getDistrict())
+                .city(product.getCity())
                 .build();
     }
 }

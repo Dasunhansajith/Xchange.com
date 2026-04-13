@@ -29,4 +29,8 @@ public class ProductDto {
     private Double averageRating;
     private Integer reviewCount;
     private List<com.example.marketplace.model.Review> reviews;
+
+    // --- Location-Based Filtering Fields ---
+    private String district;
+    private String city;
 }
