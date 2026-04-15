@@ -4,11 +4,13 @@ import com.example.marketplace.model.Notification;
 import com.example.marketplace.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Transactional
 @SuppressWarnings("null")
 public class NotificationService {
     @Autowired

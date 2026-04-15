@@ -6,6 +6,7 @@ import com.example.marketplace.service.PaymentMethod;
 import com.example.marketplace.service.PaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -29,6 +30,7 @@ import java.util.UUID;
  * 5. Seller marks order as COMPLETED after payment received
  */
 @Service
+@Transactional
 @Slf4j
 public class CashOnDeliveryPaymentService implements PaymentService {
 

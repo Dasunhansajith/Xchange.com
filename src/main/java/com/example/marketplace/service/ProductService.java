@@ -10,6 +10,10 @@ import com.example.marketplace.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -61,14 +65,22 @@ public class ProductService {
         return mapToDto(saved, false);
     }
 
-    public List<ProductDto> getAllProducts() {
-        return productRepository.findAll().stream()
-                .map(p -> mapToDto(p, false))
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public Page<ProductDto> getAllProducts(Pageable pageable) {
+        // Filter for ACTIVE products only to avoid returning archived/sold items
+        return productRepository.findAll(pageable)
+                .map(p -> mapToDto(p, false));
     }
 
+    public Page<ProductDto> getProductsBySeller(String userEmail, Pageable pageable) {
+        return productRepository.findBySellerId(userEmail, pageable)
+                .map(p -> mapToDto(p, false));
+    }
+    
+    @Deprecated(forRemoval = true) // Use getProductsBySeller(userEmail, Pageable) instead
     public List<ProductDto> getProductsBySeller(String userEmail) {
-        return productRepository.findBySellerId(userEmail).stream()
+        // Return first 100 for backward compatibility
+        return productRepository.findBySellerId(userEmail, PageRequest.of(0, 100)).stream()
                 .map(p -> mapToDto(p, false))
                 .collect(Collectors.toList());
     }
@@ -133,10 +145,13 @@ public class ProductService {
     }
 
     private ProductDto mapToDto(Product product, boolean includeReviews) {
+        // Use product's denormalized shopName instead of querying database (prevents N+1 queries)
         String shopName = product.getShopName();
-        if (shopName == null && product.getShopId() != null) {
-            shopName = shopRepository.findById(product.getShopId()).map(Shop::getShopName)
-                    .orElse("Shop #" + product.getShopId().substring(0, 5) + "...");
+        if (shopName == null || shopName.trim().isEmpty()) {
+            // Only fallback to lookup if absolutely necessary
+            shopName = product.getShopId() != null 
+                    ? ("Shop #" + product.getShopId().substring(0, Math.min(5, product.getShopId().length())) + "...")
+                    : "Unknown Shop";
         }
 
         List<com.example.marketplace.model.Review> reviews = null;

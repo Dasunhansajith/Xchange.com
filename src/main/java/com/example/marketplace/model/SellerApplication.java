@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -15,9 +18,13 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "seller_applications")
+@CompoundIndexes({
+    @CompoundIndex(name = "idx_userId_status", def = "{'userId': 1, 'status': 1}")
+})
 public class SellerApplication {
     @Id
     private String id;
+    @Indexed
     private String userId;
     private String userName; // name of the user who created the store
     private String shopName;
