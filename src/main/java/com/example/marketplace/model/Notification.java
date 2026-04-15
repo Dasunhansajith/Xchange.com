@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -14,9 +17,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "notifications")
+@CompoundIndexes({
+    @CompoundIndex(name = "idx_recipientId_isRead", def = "{'recipientId': 1, 'isRead': 1}")
+})
 public class Notification {
     @Id
     private String id;
+    @Indexed
     private String recipientId; // email of the user
     private String senderId; // email of the sender (optional)
     private String title;

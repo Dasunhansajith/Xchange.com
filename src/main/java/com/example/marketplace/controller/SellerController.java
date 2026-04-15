@@ -2,13 +2,16 @@ package com.example.marketplace.controller;
 
 import com.example.marketplace.dto.AuthResponse;
 import com.example.marketplace.dto.SellerRegisterRequest;
+import com.example.marketplace.dto.SalesReportDTO;
 import com.example.marketplace.model.SellerApplication;
 import com.example.marketplace.service.SellerService;
+import com.example.marketplace.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +20,9 @@ import java.util.Map;
 public class SellerController {
     @Autowired
     private SellerService sellerService;
+    
+    @Autowired
+    private OrderService orderService;
 
     public SellerController() {
         System.out.println("SellerController initialized");
@@ -74,6 +80,17 @@ public class SellerController {
         }
         // Return the most recent application
         return ResponseEntity.ok(applications.get(0));
+    }
+
+    @GetMapping("/sales-report")
+    public ResponseEntity<SalesReportDTO> getSalesReport(
+            @RequestParam long startDate,
+            @RequestParam long endDate,
+            Authentication auth) {
+        LocalDateTime start = LocalDateTime.ofEpochSecond(startDate / 1000, 0, java.time.ZoneOffset.UTC);
+        LocalDateTime end = LocalDateTime.ofEpochSecond(endDate / 1000, 0, java.time.ZoneOffset.UTC);
+        SalesReportDTO report = orderService.getSalesReport(auth.getName(), start, end);
+        return ResponseEntity.ok(report);
     }
 }
 

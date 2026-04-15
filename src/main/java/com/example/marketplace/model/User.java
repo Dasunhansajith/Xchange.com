@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 public class User implements UserDetails {
     @Id
     private String id;
+    @Indexed(unique = true)
     private String email;
     private String passwordHash;
     @Builder.Default
@@ -34,6 +36,7 @@ public class User implements UserDetails {
     private String nicNumber;
     private LocalDateTime createdAt;
     private String profilePhotoUrl;
+    @Indexed
     private String shopId;
     @Builder.Default
     private Set<String> wishlist = new HashSet<>();

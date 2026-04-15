@@ -2,7 +2,6 @@ package com.example.marketplace.service;
 
 import com.example.marketplace.model.Order;
 import com.example.marketplace.model.Product;
-import com.example.marketplace.model.Vehicle;
 import com.example.marketplace.model.User;
 import com.example.marketplace.model.Notification;
 import com.example.marketplace.model.Review;
@@ -10,10 +9,13 @@ import com.example.marketplace.repository.OrderRepository;
 import com.example.marketplace.repository.ProductRepository;
 import com.example.marketplace.repository.UserRepository;
 import com.example.marketplace.repository.NotificationRepository;
-import com.example.marketplace.repository.VehicleRepository;
 import com.example.marketplace.repository.ReviewRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -36,110 +39,74 @@ public class OrderService {
     @Autowired
     private NotificationRepository notificationRepository;
     @Autowired
-    private VehicleRepository vehicleRepository;
-    @Autowired
     private ReviewRepository reviewRepository;
+    @Autowired
+    private MongoTemplate mongoTemplate;
 
     public Order placeSingleOrder(String email, String productId, int quantity, String shippingAddress,
             String buyerName, String buyerPhone) {
-        System.out.println("Placing single order for buyer: " + email + ", product or vehicle: " + productId);
+        System.out.println("Placing single order for buyer: " + email + ", product: " + productId);
 
-        // Try Product
         Product product = productRepository.findById(productId).orElse(null);
-        if (product != null) {
-            // Handle missing sellerId for older products
-            if (product.getSellerId() == null && product.getShopId() != null) {
-                userRepository.findByShopId(product.getShopId()).ifPresent(u -> {
-                    product.setSellerId(u.getEmail());
-                    productRepository.save(product);
-                });
-            }
-
-            // Handle missing stockQuantity for older products
-            if (product.getStockQuantity() == null) {
-                product.setStockQuantity(100);
+        if (product == null) {
+            throw new RuntimeException("Product not found: " + productId);
+        }
+        
+        // Handle missing sellerId for older products
+        if (product.getSellerId() == null && product.getShopId() != null) {
+            userRepository.findByShopId(product.getShopId()).ifPresent(u -> {
+                product.setSellerId(u.getEmail());
                 productRepository.save(product);
-            }
+            });
+        }
 
-            if (product.getStockQuantity() < quantity) {
-                throw new RuntimeException("Insufficient stock. Available: " + product.getStockQuantity());
-            }
-
-            if (product.getPrice() == null) {
-                product.setPrice(BigDecimal.ZERO);
-            }
-
-            BigDecimal totalPrice = product.getPrice().multiply(new BigDecimal(quantity));
-
-            Order order = Order.builder()
-                    .buyerId(email)
-                    .buyerName(buyerName)
-                    .buyerPhone(buyerPhone)
-                    .sellerId(product.getSellerId())
-                    .items(Collections.singletonList(Order.OrderItem.builder()
-                            .productId(productId)
-                            .name(product.getName())
-                            .price(product.getPrice())
-                            .quantity(quantity)
-                            .build()))
-                    .productName(product.getName())
-                    .productImage(product.getImages() != null && !product.getImages().isEmpty() ? product.getImages().get(0) : null)
-                    .totalPrice(totalPrice)
-                    .shippingAddress(shippingAddress)
-                    .status("PENDING")
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-
-            // Deduct stock
-            product.setStockQuantity(product.getStockQuantity() - quantity);
-            if (product.getStockQuantity() == 0) {
-                product.setStatus("SOLD");
-            }
+        // Handle missing stockQuantity for older products
+        if (product.getStockQuantity() == null) {
+            product.setStockQuantity(100);
             productRepository.save(product);
-
-            order.initTracking();
-            Order saved = orderRepository.save(order);
-            notifySellers(saved);
-            return saved;
         }
 
-        // Try Vehicle
-        Vehicle vehicle = vehicleRepository.findById(productId).orElse(null);
-        if (vehicle != null) {
-            BigDecimal totalPrice = vehicle.getPrice() != null ? vehicle.getPrice() : BigDecimal.ZERO;
-
-            Order order = Order.builder()
-                    .buyerId(email)
-                    .buyerName(buyerName)
-                    .buyerPhone(buyerPhone)
-                    .sellerId(vehicle.getSellerId())
-                    .items(Collections.singletonList(Order.OrderItem.builder()
-                            .productId(productId)
-                            .name(vehicle.getTitle())
-                            .price(totalPrice)
-                            .quantity(1)
-                            .build()))
-                    .productName(vehicle.getTitle())
-                    .productImage(vehicle.getImages() != null && !vehicle.getImages().isEmpty() ? vehicle.getImages().get(0) : null)
-                    .totalPrice(totalPrice)
-                    .shippingAddress(shippingAddress)
-                    .status("PENDING")
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-
-            // Mark vehicle as sold
-            vehicle.setStatus("SOLD");
-            vehicleRepository.save(vehicle);
-
-            order.initTracking();
-            Order saved = orderRepository.save(order);
-            notifySellers(saved);
-            return saved;
+        if (product.getStockQuantity() < quantity) {
+            throw new RuntimeException("Insufficient stock. Available: " + product.getStockQuantity());
         }
 
-        throw new RuntimeException("Product or Vehicle not found: " + productId);
+        if (product.getPrice() == null) {
+            product.setPrice(BigDecimal.ZERO);
+        }
+
+        BigDecimal totalPrice = product.getPrice().multiply(new BigDecimal(quantity));
+
+        Order order = Order.builder()
+                .buyerId(email)
+                .buyerName(buyerName)
+                .buyerPhone(buyerPhone)
+                .sellerId(product.getSellerId())
+                .items(Collections.singletonList(Order.OrderItem.builder()
+                        .productId(productId)
+                        .name(product.getName())
+                        .price(product.getPrice())
+                        .quantity(quantity)
+                        .build()))
+                .productName(product.getName())
+                .productImage(product.getImages() != null && !product.getImages().isEmpty() ? product.getImages().get(0) : null)
+                .totalPrice(totalPrice)
+                .shippingAddress(shippingAddress)
+                .status("PENDING")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        // Deduct stock
+        product.setStockQuantity(product.getStockQuantity() - quantity);
+        if (product.getStockQuantity() == 0) {
+            product.setStatus("SOLD");
+        }
+        productRepository.save(product);
+
+        order.initTracking();
+        Order saved = orderRepository.save(order);
+        notifySellers(saved);
+        return saved;
     }
 
     private void notifySellers(Order order) {
@@ -227,25 +194,35 @@ public class OrderService {
             throw new RuntimeException("Wishlist is empty");
         }
 
+        // OPTIMIZATION: Batch fetch all products instead of individual queries
+        List<String> itemIds = new ArrayList<>(wishlist);
+        
+        // Batch fetch products
+        List<Product> allProducts = productRepository.findByIdIn(itemIds);
+        Map<String, Product> productMap = allProducts.stream()
+                .collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
+
         List<Order.OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalPrice = BigDecimal.ZERO;
         String firstSellerId = null;
         String firstProductImage = null;
+        
+        // Track items to update for batch save
+        List<Product> productsToUpdate = new ArrayList<>();
 
         for (String itemId : wishlist) {
-            // Check Product
-            Product product = productRepository.findById(itemId).orElse(null);
+            // Check Product from map (no DB query)
+            Product product = productMap.get(itemId);
             if (product != null) {
                 // Repair older products
                 if (product.getSellerId() == null && product.getShopId() != null) {
-                    userRepository.findByShopId(product.getShopId()).ifPresent(u -> {
-                        product.setSellerId(u.getEmail());
-                        productRepository.save(product);
-                    });
+                    java.util.Optional<User> shopOwner = userRepository.findByShopId(product.getShopId());
+                    if (shopOwner.isPresent()) {
+                        product.setSellerId(shopOwner.get().getEmail());
+                    }
                 }
                 if (product.getStockQuantity() == null) {
                     product.setStockQuantity(100);
-                    productRepository.save(product);
                 }
 
                 if (product.getStockQuantity() >= 1) {
@@ -265,29 +242,8 @@ public class OrderService {
                     product.setStockQuantity(product.getStockQuantity() - 1);
                     if (product.getStockQuantity() == 0)
                         product.setStatus("SOLD");
-                    productRepository.save(product);
+                    productsToUpdate.add(product);  // Track for batch save
                 }
-                continue;
-            }
-
-            // Check Vehicle
-            Vehicle vehicle = vehicleRepository.findById(itemId).orElse(null);
-            if (vehicle != null) {
-                orderItems.add(Order.OrderItem.builder()
-                        .productId(itemId)
-                        .name(vehicle.getTitle())
-                        .price(vehicle.getPrice() != null ? vehicle.getPrice() : BigDecimal.ZERO)
-                        .quantity(1)
-                        .build());
-                totalPrice = totalPrice.add(vehicle.getPrice() != null ? vehicle.getPrice() : BigDecimal.ZERO);
-                if (firstSellerId == null)
-                    firstSellerId = vehicle.getSellerId();
-                if (firstProductImage == null)
-                    firstProductImage = vehicle.getImages() != null && !vehicle.getImages().isEmpty() ? vehicle.getImages().get(0) : null;
-
-                // Mark as SOLD
-                vehicle.setStatus("SOLD");
-                vehicleRepository.save(vehicle);
             }
         }
 
@@ -311,6 +267,11 @@ public class OrderService {
                 .build();
         
         order.initTracking();
+
+        // OPTIMIZATION: Batch save products instead of individual saves
+        if (!productsToUpdate.isEmpty()) {
+            productRepository.saveAll(productsToUpdate);
+        }
 
         // Clear wishlist
         user.getWishlist().clear();
@@ -428,6 +389,7 @@ public class OrderService {
         Product product = productRepository.findById(productId).orElse(null);
         if (product == null) return;
 
+        // OPTIMIZATION: Calculate ratings efficiently
         java.util.List<Review> reviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(productId);
         int count = reviews.size();
         double average = reviews.stream()
@@ -444,8 +406,48 @@ public class OrderService {
         return orderRepository.findByBuyerIdOrderByCreatedAtDesc(email);
     }
 
+    public Page<Order> getAllOrders(Pageable pageable) {
+        return orderRepository.findAll(pageable);
+    }
+    
+    @Deprecated(forRemoval = true) // Use getAllOrders(Pageable) instead
     public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+        // Return first 100 for backward compatibility
+        return orderRepository.findAll(PageRequest.of(0, 100)).getContent();
+    }
+
+    public com.example.marketplace.dto.SalesReportDTO getSalesReport(String sellerId, LocalDateTime startDate, LocalDateTime endDate) {
+        List<Order> orders = orderRepository.findSellerSalesByDateRange(sellerId, startDate, endDate);
+        
+        BigDecimal totalRevenue = orders.stream()
+                .map(Order::getTotalPrice)
+                .filter(price -> price != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<com.example.marketplace.dto.SalesReportDTO.OrderSummary> orderSummaries = orders.stream()
+                .map(order -> com.example.marketplace.dto.SalesReportDTO.OrderSummary.builder()
+                        .orderId(order.getId())
+                        .productName(order.getProductName())
+                        .quantity(order.getItems() != null && !order.getItems().isEmpty() 
+                                ? order.getItems().get(0).getQuantity() 
+                                : 0)
+                        .price(order.getItems() != null && !order.getItems().isEmpty() 
+                                ? order.getItems().get(0).getPrice() 
+                                : BigDecimal.ZERO)
+                        .totalPrice(order.getTotalPrice())
+                        .buyerName(order.getBuyerName())
+                        .status(order.getStatus())
+                        .dateCreated(order.getCreatedAt())
+                        .build())
+                .toList();
+
+        return com.example.marketplace.dto.SalesReportDTO.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .totalOrders(orders.size())
+                .totalRevenue(totalRevenue)
+                .orders(orderSummaries)
+                .build();
     }
 }
 
