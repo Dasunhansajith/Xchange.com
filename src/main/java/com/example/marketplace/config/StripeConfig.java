@@ -25,9 +25,6 @@ import jakarta.annotation.PostConstruct;
 @Configuration
 public class StripeConfig {
 
-    @Value("${stripe.enabled:false}")
-    private boolean stripeEnabled;
-
     /**
      * Stripe Secret Key - injected from application.properties
      * This key should not be exposed in frontend or logs
@@ -42,20 +39,14 @@ public class StripeConfig {
      * Initialize Stripe SDK with the secret key on application startup.
      * This must be called before any Stripe API operations.
      * 
-     * @throws IllegalStateException if stripeSecretKey is not configured while stripe.enabled is true
+     * @throws IllegalStateException if stripeSecretKey is not configured
      */
     @PostConstruct
     public void init() {
-        if (!stripeEnabled) {
-            System.out.println("[Stripe] Integration is disabled. Missing Stripe functionality will be unavailable.");
-            return;
-        }
-
-        if (stripeSecretKey == null || stripeSecretKey.isEmpty() || stripeSecretKey.startsWith("${")) {
+        if (stripeSecretKey == null || stripeSecretKey.isEmpty()) {
             throw new IllegalStateException(
                 "Stripe secret key not configured! " +
-                "Please add 'STRIPE_SECRET_KEY' to your environment variables or .env file, " +
-                "or set 'stripe.enabled=false' in application.properties to bypass this check."
+                "Please add 'stripe.secret.key' to application.properties"
             );
         }
 

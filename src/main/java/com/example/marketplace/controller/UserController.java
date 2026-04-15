@@ -37,8 +37,9 @@ public class UserController {
         return ResponseEntity.ok(userService.addToWishlist(auth.getName(), productId));
     }
 
-    @DeleteMapping("/wishlist/{productId}")
-    public ResponseEntity<UserDto> removeFromWishlist(@PathVariable String productId, Authentication auth) {
-        return ResponseEntity.ok(userService.removeFromWishlist(auth.getName(), productId));
+    @DeleteMapping("/me")
+    public ResponseEntity<String> deleteAccount(Authentication auth) {
+        userService.deleteAccountCascade(auth.getName());
+        return ResponseEntity.ok("Account and related data deleted successfully");
     }
 }

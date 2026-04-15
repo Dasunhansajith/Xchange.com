@@ -33,16 +33,9 @@ public class Product {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     @Builder.Default
-    @org.springframework.data.mongodb.core.index.Indexed
     private String status = "ACTIVE"; // ACTIVE, SOLD, DRAFT, ARCHIVED
     @Builder.Default
     private Double averageRating = 0.0;
     @Builder.Default
     private Integer reviewCount = 0;
-
-    // --- Location-Based Filtering Fields ---
-    @org.springframework.data.mongodb.core.index.Indexed
-    private String district;
-    @org.springframework.data.mongodb.core.index.Indexed
-    private String city;
 }
