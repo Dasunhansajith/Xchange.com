@@ -7,6 +7,7 @@ import com.example.marketplace.service.PaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -39,6 +40,7 @@ import java.util.UUID;
  * - bank.name=Bank Name
  */
 @Service
+@Transactional
 @Slf4j
 public class BankTransferPaymentService implements PaymentService {
 

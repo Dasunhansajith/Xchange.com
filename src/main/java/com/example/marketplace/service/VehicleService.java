@@ -15,8 +15,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,8 +33,6 @@ public class VehicleService {
     @Autowired
     private ShopRepository shopRepository;
 
-    @CircuitBreaker(name = "mongoCB")
-    @Retry(name = "mongoRetry")
     public Page<VehicleDto> search(Map<String, String> filters, Pageable pageable) {
         Query query = new Query().with(pageable);
 
@@ -74,8 +70,6 @@ public class VehicleService {
         return page.map(this::mapToDto);
     }
 
-    @CircuitBreaker(name = "mongoCB", fallbackMethod = "getByIdFallback")
-    @Retry(name = "mongoRetry")
     public VehicleDto getById(String id) {
         return vehicleRepository.findById(id)
                 .map(this::mapToDto)
@@ -172,17 +166,6 @@ public class VehicleService {
                 .year(dto.getYear())
                 .createdAt(dto.getCreatedAt())
                 .status(dto.getStatus())
-                .build();
-    }
-
-    // Fallback method for getById
-    public VehicleDto getByIdFallback(String id, Throwable t) {
-        System.err.println("Database is currently unavailable. Returning fallback for: " + id);
-        return VehicleDto.builder()
-                .id(id)
-                .title("Service Temporarily Unavailable")
-                .description("We are currently experiencing database connection issues. Please try again later.")
-                .status("UNAVAILABLE")
                 .build();
     }
 }

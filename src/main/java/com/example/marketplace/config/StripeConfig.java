@@ -2,8 +2,12 @@ package com.example.marketplace.config;
 
 import com.stripe.Stripe;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import jakarta.annotation.PostConstruct;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Stripe Configuration Class
@@ -21,19 +25,17 @@ import jakarta.annotation.PostConstruct;
  * Usage:
  * - Add to application.properties: stripe.secret.key=sk_test_xxxxx
  * - This bean is automatically initialized on application startup via @PostConstruct
+ *   only if the property is defined.
  */
 @Configuration
+@ConditionalOnProperty(name = "stripe.secret.key")
 public class StripeConfig {
 
-    @Value("${stripe.enabled:false}")
-    private boolean stripeEnabled;
+    private static final Logger log = LoggerFactory.getLogger(StripeConfig.class);
 
     /**
      * Stripe Secret Key - injected from application.properties
      * This key should not be exposed in frontend or logs
-     * 
-     * In application.properties:
-     * stripe.secret.key=sk_test_your_secret_key_here
      */
     @Value("${stripe.secret.key}")
     private String stripeSecretKey;
@@ -41,28 +43,18 @@ public class StripeConfig {
     /**
      * Initialize Stripe SDK with the secret key on application startup.
      * This must be called before any Stripe API operations.
-     * 
-     * @throws IllegalStateException if stripeSecretKey is not configured while stripe.enabled is true
      */
     @PostConstruct
     public void init() {
-        if (!stripeEnabled) {
-            System.out.println("[Stripe] Integration is disabled. Missing Stripe functionality will be unavailable.");
+        if (stripeSecretKey == null || stripeSecretKey.trim().isEmpty()) {
+            log.warn("[Stripe] Secret key is empty! Payment operations will fail.");
             return;
         }
 
-        if (stripeSecretKey == null || stripeSecretKey.isEmpty() || stripeSecretKey.startsWith("${")) {
-            throw new IllegalStateException(
-                "Stripe secret key not configured! " +
-                "Please add 'STRIPE_SECRET_KEY' to your environment variables or .env file, " +
-                "or set 'stripe.enabled=false' in application.properties to bypass this check."
-            );
-        }
-
         // Initialize Stripe SDK with the secret key
-        Stripe.apiKey = stripeSecretKey;
+        Stripe.apiKey = stripeSecretKey.trim();
         
-        System.out.println("[Stripe] SDK initialized successfully");
+        log.info("[Stripe] SDK initialized successfully");
     }
 
     /**

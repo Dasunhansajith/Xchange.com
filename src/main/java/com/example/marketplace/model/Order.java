@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
@@ -19,10 +22,17 @@ import java.util.Arrays;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "orders")
+@CompoundIndexes({
+    @CompoundIndex(name = "idx_buyerId_createdAt", def = "{'buyerId': 1, 'createdAt': -1}"),
+    @CompoundIndex(name = "idx_sellerId_createdAt", def = "{'sellerId': 1, 'createdAt': -1}"),
+    @CompoundIndex(name = "idx_trackingStatus", def = "{'trackingStatus': 1}")
+})
 public class Order {
     @Id
     private String id;
+    @Indexed
     private String buyerId; // email of the buyer
+    @Indexed
     private String sellerId; // email of the seller - for single product orders or per-item
     private List<OrderItem> items;
     private String productName; // For quick display

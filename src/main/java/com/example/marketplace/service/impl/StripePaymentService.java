@@ -10,6 +10,7 @@ import com.stripe.param.checkout.SessionCreateParams;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -46,6 +47,7 @@ import java.util.Map;
  * - Always validate payment session before confirming order
  */
 @Service
+@Transactional
 @Slf4j
 public class StripePaymentService implements PaymentService {
 

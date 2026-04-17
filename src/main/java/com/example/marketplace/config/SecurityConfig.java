@@ -71,7 +71,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/products").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAnyRole("SELLER", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyRole("SELLER", "ADMIN")
-                        .requestMatchers("/api/products/my", "/api/products/seller/me").authenticated()
 
                         // Other protected endpoints
                         .requestMatchers("/api/orders/**").authenticated()
