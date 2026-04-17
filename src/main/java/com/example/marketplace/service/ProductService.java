@@ -59,6 +59,8 @@ public class ProductService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .status("ACTIVE")
+                .district(dto.getDistrict())      // KEPT from feature branch
+                .city(dto.getCity())              // KEPT from feature branch
                 .build();
 
         Product saved = productRepository.save(product);
@@ -68,7 +70,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<ProductDto> getAllProducts(Pageable pageable) {
         // Filter for ACTIVE products only to avoid returning archived/sold items
-        return productRepository.findAll(pageable)
+        return productRepository.findByStatus("ACTIVE", pageable)  // IMPROVED: filter at DB level
                 .map(p -> mapToDto(p, false));
     }
 
@@ -108,6 +110,8 @@ public class ProductService {
         product.setImages(dto.getImages());
         product.setStatus(dto.getStatus());
         product.setUpdatedAt(LocalDateTime.now());
+        product.setDistrict(dto.getDistrict());    // KEPT from feature branch
+        product.setCity(dto.getCity());            // KEPT from feature branch
 
         Product updated = productRepository.save(product);
         return mapToDto(updated, false);
@@ -132,16 +136,42 @@ public class ProductService {
             
             if (seller != null) {
                 notificationService.createNotification(
-                    sellerEmail,
-                    "Product Removed by Admin",
-                    "Your product '" + product.getName() + "' has been removed from the marketplace by an administrator.",
-                    "PRODUCT_DELETED_BY_ADMIN",
-                    product.getId()
-                );
+                        sellerEmail,
+                        "Product Removed by Admin",
+                        "Your product '" + product.getName()
+                                + "' has been removed from the marketplace by an administrator.",
+                        "PRODUCT_DELETED_BY_ADMIN",
+                        product.getId());
             }
         }
 
         productRepository.delete(product);
+    }
+
+    // KEPT and IMPROVED from feature branch - location filtering
+    public Page<ProductDto> filterProducts(String district, String city, Pageable pageable) {
+        String status = "ACTIVE";
+        boolean hasDistrict = district != null && !district.trim().isEmpty() && !district.equalsIgnoreCase("ALL");
+        boolean hasCity = city != null && !city.trim().isEmpty() && !city.equalsIgnoreCase("ALL");
+
+        Page<Product> productPage;
+
+        if (!hasDistrict && !hasCity) {
+            // No location filters - return all active products
+            productPage = productRepository.findByStatus(status, pageable);
+        } else if (hasDistrict && hasCity) {
+            // Both district AND city provided - most specific
+            productPage = productRepository.findByStatusAndDistrictIgnoreCaseAndCityIgnoreCase(
+                status, district, city, pageable);
+        } else if (hasDistrict) {
+            // Only district provided
+            productPage = productRepository.findByStatusAndDistrictIgnoreCase(status, district, pageable);
+        } else {
+            // Only city provided
+            productPage = productRepository.findByStatusAndCityIgnoreCase(status, city, pageable);
+        }
+
+        return productPage.map(p -> mapToDto(p, false));
     }
 
     private ProductDto mapToDto(Product product, boolean includeReviews) {
@@ -149,7 +179,7 @@ public class ProductService {
         String shopName = product.getShopName();
         if (shopName == null || shopName.trim().isEmpty()) {
             // Only fallback to lookup if absolutely necessary
-            shopName = product.getShopId() != null 
+            shopName = product.getShopId() != null
                     ? ("Shop #" + product.getShopId().substring(0, Math.min(5, product.getShopId().length())) + "...")
                     : "Unknown Shop";
         }
@@ -172,6 +202,8 @@ public class ProductService {
                 .images(product.getImages())
                 .createdAt(product.getCreatedAt())
                 .status(product.getStatus())
+                .district(product.getDistrict())    // ADDED from feature branch
+                .city(product.getCity())            // ADDED from feature branch
                 .averageRating(product.getAverageRating())
                 .reviewCount(product.getReviewCount())
                 .reviews(reviews)

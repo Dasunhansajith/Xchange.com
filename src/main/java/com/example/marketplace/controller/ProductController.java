@@ -32,6 +32,16 @@ public class ProductController {
         return ResponseEntity.ok(productService.getAllProducts(pageable));
     }
 
+    @GetMapping("/filter")
+    public ResponseEntity<Page<ProductDto>> filterProducts(
+            @RequestParam(required = false) String district,
+            @RequestParam(required = false) String city,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(productService.filterProducts(district, city, pageable));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ProductDto> getProductById(@PathVariable String id) {
         return ResponseEntity.ok(productService.getProductById(id));
