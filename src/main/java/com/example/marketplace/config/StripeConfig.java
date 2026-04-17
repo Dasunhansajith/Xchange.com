@@ -43,12 +43,16 @@ public class StripeConfig {
     /**
      * Initialize Stripe SDK with the secret key on application startup.
      * This must be called before any Stripe API operations.
+     * 
+     * @throws IllegalStateException if stripeSecretKey is not configured
      */
     @PostConstruct
     public void init() {
         if (stripeSecretKey == null || stripeSecretKey.trim().isEmpty()) {
-            log.warn("[Stripe] Secret key is empty! Payment operations will fail.");
-            return;
+            throw new IllegalStateException(
+                "Stripe secret key not configured! " +
+                "Please add 'stripe.secret.key' to application.properties"
+            );
         }
 
         // Initialize Stripe SDK with the secret key

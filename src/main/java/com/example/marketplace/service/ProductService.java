@@ -59,8 +59,8 @@ public class ProductService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .status("ACTIVE")
-                .district(dto.getDistrict())
-                .city(dto.getCity())
+                .district(dto.getDistrict())      // KEPT from feature branch
+                .city(dto.getCity())              // KEPT from feature branch
                 .build();
 
         Product saved = productRepository.save(product);
@@ -70,7 +70,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<ProductDto> getAllProducts(Pageable pageable) {
         // Filter for ACTIVE products only to avoid returning archived/sold items
-        return productRepository.findAll(pageable)
+        return productRepository.findByStatus("ACTIVE", pageable)  // IMPROVED: filter at DB level
                 .map(p -> mapToDto(p, false));
     }
 
@@ -78,7 +78,7 @@ public class ProductService {
         return productRepository.findBySellerId(userEmail, pageable)
                 .map(p -> mapToDto(p, false));
     }
-
+    
     @Deprecated(forRemoval = true) // Use getProductsBySeller(userEmail, Pageable) instead
     public List<ProductDto> getProductsBySeller(String userEmail) {
         // Return first 100 for backward compatibility
@@ -110,8 +110,8 @@ public class ProductService {
         product.setImages(dto.getImages());
         product.setStatus(dto.getStatus());
         product.setUpdatedAt(LocalDateTime.now());
-        product.setDistrict(dto.getDistrict());
-        product.setCity(dto.getCity());
+        product.setDistrict(dto.getDistrict());    // KEPT from feature branch
+        product.setCity(dto.getCity());            // KEPT from feature branch
 
         Product updated = productRepository.save(product);
         return mapToDto(updated, false);
@@ -124,7 +124,7 @@ public class ProductService {
         // Check if user is ADMIN or the owner
         boolean isAdmin = auth.getAuthorities().stream()
                 .anyMatch(ga -> ga.getAuthority().equals("ROLE_ADMIN"));
-
+        
         if (!isAdmin && !product.getSellerId().equals(auth.getName())) {
             throw new RuntimeException("You are not authorized to delete this product");
         }
@@ -133,7 +133,7 @@ public class ProductService {
         if (isAdmin && !product.getSellerId().equals(auth.getName())) {
             String sellerEmail = product.getSellerId();
             User seller = userRepository.findByEmail(sellerEmail).orElse(null);
-
+            
             if (seller != null) {
                 notificationService.createNotification(
                         sellerEmail,
@@ -148,30 +148,34 @@ public class ProductService {
         productRepository.delete(product);
     }
 
+    // KEPT and IMPROVED from feature branch - location filtering
     public Page<ProductDto> filterProducts(String district, String city, Pageable pageable) {
-        Page<Product> productPage;
+        String status = "ACTIVE";
         boolean hasDistrict = district != null && !district.trim().isEmpty() && !district.equalsIgnoreCase("ALL");
         boolean hasCity = city != null && !city.trim().isEmpty() && !city.equalsIgnoreCase("ALL");
 
+        Page<Product> productPage;
+
         if (!hasDistrict && !hasCity) {
-            productPage = productRepository.findByStatus("ACTIVE", pageable);
-        } else if (hasCity) {
-            // When city is selected, search by city (using regex) to catch both new data
-            // and legacy data (where district might be missing but city contains the name).
-            // This also prevents returning products from the entire district if a specific
-            // city is chosen.
-            productPage = productRepository.findActiveByCity(city, pageable);
+            // No location filters - return all active products
+            productPage = productRepository.findByStatus(status, pageable);
+        } else if (hasDistrict && hasCity) {
+            // Both district AND city provided - most specific
+            productPage = productRepository.findByStatusAndDistrictIgnoreCaseAndCityIgnoreCase(
+                status, district, city, pageable);
+        } else if (hasDistrict) {
+            // Only district provided
+            productPage = productRepository.findByStatusAndDistrictIgnoreCase(status, district, pageable);
         } else {
-            // Only district is selected. Search district OR city to catch legacy data
-            // where the district name might be stored in the city field.
-            productPage = productRepository.findActiveByDistrictOrCity(district, district, pageable);
+            // Only city provided
+            productPage = productRepository.findByStatusAndCityIgnoreCase(status, city, pageable);
         }
+
         return productPage.map(p -> mapToDto(p, false));
     }
 
     private ProductDto mapToDto(Product product, boolean includeReviews) {
-        // Use product's denormalized shopName instead of querying database (prevents
-        // N+1 queries)
+        // Use product's denormalized shopName instead of querying database (prevents N+1 queries)
         String shopName = product.getShopName();
         if (shopName == null || shopName.trim().isEmpty()) {
             // Only fallback to lookup if absolutely necessary
@@ -198,11 +202,11 @@ public class ProductService {
                 .images(product.getImages())
                 .createdAt(product.getCreatedAt())
                 .status(product.getStatus())
+                .district(product.getDistrict())    // ADDED from feature branch
+                .city(product.getCity())            // ADDED from feature branch
                 .averageRating(product.getAverageRating())
                 .reviewCount(product.getReviewCount())
                 .reviews(reviews)
-                .district(product.getDistrict())
-                .city(product.getCity())
                 .build();
     }
 }

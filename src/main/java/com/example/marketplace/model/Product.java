@@ -49,10 +49,4 @@ public class Product {
     private Double averageRating = 0.0;
     @Builder.Default
     private Integer reviewCount = 0;
-
-    // --- Location-Based Filtering Fields ---
-    @org.springframework.data.mongodb.core.index.Indexed
-    private String district;
-    @org.springframework.data.mongodb.core.index.Indexed
-    private String city;
 }
