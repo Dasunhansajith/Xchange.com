@@ -14,6 +14,7 @@ import java.util.List;
 public interface OrderRepository extends MongoRepository<Order, String> {
     List<Order> findByBuyerIdOrderByCreatedAtDesc(String buyerId);
     Page<Order> findByBuyerIdOrderByCreatedAtDesc(String buyerId, Pageable pageable);
+    long countByBuyerId(String buyerId);
     
     List<Order> findBySellerIdOrderByCreatedAtDesc(String sellerId);
     Page<Order> findBySellerIdOrderByCreatedAtDesc(String sellerId, Pageable pageable);
@@ -23,5 +24,7 @@ public interface OrderRepository extends MongoRepository<Order, String> {
     
     @Query("{ 'sellerId': ?0, 'createdAt': { $gte: ?1, $lte: ?2 }, 'status': { $in: ['COMPLETED', 'ACCEPTED'] } }")
     List<Order> findSellerSalesByDateRange(String sellerId, LocalDateTime startDate, LocalDateTime endDate);
-}
 
+    /** Checks if a buyer has already placed an order using a specific promotion. Replaces user_promotion_usage. */
+    boolean existsByBuyerIdAndAppliedPromotionId(String buyerId, String appliedPromotionId);
+}

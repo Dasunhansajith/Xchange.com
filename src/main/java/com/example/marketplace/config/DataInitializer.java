@@ -1,0 +1,87 @@
+package com.example.marketplace.config;
+
+import com.example.marketplace.model.*;
+import com.example.marketplace.repository.PromotionRepository;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Configuration
+public class DataInitializer {
+
+    @Bean
+    CommandLineRunner initPromotions(PromotionRepository repository) {
+        return args -> {
+            // Always upsert the system promotions so they stay correct even if
+            // the DB already existed before the createdBy field was added.
+
+            // 1. Site-wide Admin Promotion
+            if (!repository.existsById("ADMIN_SALE_2026")) {
+                repository.save(Promotion.builder()
+                        .id("ADMIN_SALE_2026")
+                        .name("Site-wide Summer Sale")
+                        .discountType(DiscountType.PERCENTAGE)
+                        .value(new BigDecimal("15"))
+                        .startDate(LocalDateTime.now().minusDays(1))
+                        .endDate(LocalDateTime.now().plusMonths(3))
+                        .createdBy(PromotionCreator.ADMIN)
+                        .createdAt(LocalDateTime.now())
+                        .usageType(UsageType.ONE_TIME)
+                        .build()); // No validMonth = always visible, not locked to one month
+                System.out.println("[DataInitializer] Seeded ADMIN_SALE_2026");
+            } else {
+                // Patch existing document to ensure createdBy is set correctly
+                repository.findById("ADMIN_SALE_2026").ifPresent(p -> {
+                    if (p.getCreatedBy() == null) {
+                        p.setCreatedBy(PromotionCreator.ADMIN);
+                        repository.save(p);
+                        System.out.println("[DataInitializer] Patched ADMIN_SALE_2026 createdBy field");
+                    }
+                });
+            }
+
+            // 2. Category-specific Promotion (Electronics)
+            if (!repository.existsById("ELECTRONICS_SALE")) {
+                repository.save(Promotion.builder()
+                        .id("ELECTRONICS_SALE")
+                        .name("Tech Bonanza - Electronics")
+                        .discountType(DiscountType.PERCENTAGE)
+                        .value(new BigDecimal("10"))
+                        .startDate(LocalDateTime.now().minusDays(5))
+                        .endDate(LocalDateTime.now().plusMonths(1))
+                        .createdBy(PromotionCreator.ADMIN)
+                        .createdAt(LocalDateTime.now())
+                        .scope("CATEGORY:Electronics")
+                        .usageType(UsageType.MULTI_USE)
+                        .build());
+                System.out.println("[DataInitializer] Seeded ELECTRONICS_SALE");
+            }
+
+            /* 
+            // Aggressive patch: Ensure ALL promotions in the database have a createdBy field
+            repository.findAll().forEach(p -> {
+                boolean updated = false;
+                if (p.getCreatedBy() == null) {
+                    if (p.getSellerId() != null) {
+                        p.setCreatedBy(PromotionCreator.SELLER);
+                    } else {
+                        p.setCreatedBy(PromotionCreator.ADMIN);
+                    }
+                    updated = true;
+                }
+                // Ensure ID-based Admin promo is correctly typed
+                if ("ADMIN_SALE_2026".equals(p.getId()) && p.getCreatedBy() != PromotionCreator.ADMIN) {
+                    p.setCreatedBy(PromotionCreator.ADMIN);
+                    updated = true;
+                }
+                if (updated) repository.save(p);
+            });
+            */
+
+            System.out.println("[DataInitializer] Promotion check and patch complete.");
+        };
+    }
+}

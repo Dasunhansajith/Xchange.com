@@ -45,6 +45,8 @@ public class Product {
     private LocalDateTime updatedAt;
     @Builder.Default
     private String status = "ACTIVE"; // ACTIVE, SOLD, DRAFT, ARCHIVED
+    private String district;
+    private String city;
     @Builder.Default
     private Double averageRating = 0.0;
     @Builder.Default

@@ -3,18 +3,10 @@ package com.example.marketplace.controller;
 import com.example.marketplace.model.Order;
 import com.example.marketplace.service.OrderService;
 import com.example.marketplace.service.OrderTrackingService;
-import com.example.marketplace.dto.OrderTrackingDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
@@ -35,7 +27,18 @@ public class OrderController {
         String shippingAddress = (String) payload.get("shippingAddress");
         String buyerName = (String) payload.get("buyerName");
         String buyerPhone = (String) payload.get("buyerPhone");
-        return ResponseEntity.ok(orderService.placeSingleOrder(auth.getName(), productId, quantity, shippingAddress, buyerName, buyerPhone));
+        String promotionId = (String) payload.get("promotionId");
+        
+        return ResponseEntity.ok(orderService.placeSingleOrder(
+            auth.getName(), productId, quantity, shippingAddress, buyerName, buyerPhone, promotionId));
+    }
+
+    @PostMapping("/place-from-wishlist")
+    public ResponseEntity<Order> placeOrderFromWishlist(@RequestBody Map<String, String> payload, Authentication auth) {
+        String shippingAddress = payload.get("shippingAddress");
+        String promotionId = payload.get("promotionId");
+        
+        return ResponseEntity.ok(orderService.placeOrderFromWishlist(auth.getName(), shippingAddress, promotionId));
     }
 
     @PostMapping("/{orderId}/accept")
@@ -51,12 +54,6 @@ public class OrderController {
     @GetMapping("/seller")
     public ResponseEntity<List<Order>> getSellerOrders(Authentication auth) {
         return ResponseEntity.ok(orderService.getOrdersForSeller(auth.getName()));
-    }
-
-    @PostMapping("/place-from-wishlist")
-    public ResponseEntity<Order> placeOrderFromWishlist(@RequestBody Map<String, String> payload, Authentication auth) {
-        String shippingAddress = payload.get("shippingAddress");
-        return ResponseEntity.ok(orderService.placeOrderFromWishlist(auth.getName(), shippingAddress));
     }
 
     @PostMapping("/{orderId}/review")
@@ -84,4 +81,3 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getMyOrders(auth.getName()));
     }
 }
-

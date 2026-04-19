@@ -69,8 +69,8 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<ProductDto> getAllProducts(Pageable pageable) {
-        // Filter for ACTIVE products only to avoid returning archived/sold items
-        return productRepository.findByStatus("ACTIVE", pageable)  // IMPROVED: filter at DB level
+        // Filter for ACTIVE products only (case-insensitive to handle legacy data "Active" vs "ACTIVE")
+        return productRepository.findByStatusIgnoreCase("ACTIVE", pageable)  // IMPROVED: filter at DB level
                 .map(p -> mapToDto(p, false));
     }
 
@@ -158,17 +158,17 @@ public class ProductService {
 
         if (!hasDistrict && !hasCity) {
             // No location filters - return all active products
-            productPage = productRepository.findByStatus(status, pageable);
+            productPage = productRepository.findByStatusIgnoreCase(status, pageable);
         } else if (hasDistrict && hasCity) {
             // Both district AND city provided - most specific
-            productPage = productRepository.findByStatusAndDistrictIgnoreCaseAndCityIgnoreCase(
+            productPage = productRepository.findByStatusIgnoreCaseAndDistrictIgnoreCaseAndCityIgnoreCase(
                 status, district, city, pageable);
         } else if (hasDistrict) {
             // Only district provided
-            productPage = productRepository.findByStatusAndDistrictIgnoreCase(status, district, pageable);
+            productPage = productRepository.findByStatusIgnoreCaseAndDistrictIgnoreCase(status, district, pageable);
         } else {
             // Only city provided
-            productPage = productRepository.findByStatusAndCityIgnoreCase(status, city, pageable);
+            productPage = productRepository.findByStatusIgnoreCaseAndCityIgnoreCase(status, city, pageable);
         }
 
         return productPage.map(p -> mapToDto(p, false));

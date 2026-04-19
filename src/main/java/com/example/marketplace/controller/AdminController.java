@@ -88,8 +88,8 @@ public class AdminController {
     }
 
     @GetMapping("/orders")
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
+    public ResponseEntity<List<Order>> getAllOrders(org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(orderService.getAllOrders(pageable).getContent());
     }
 
     @PostMapping("/users/{userId}/role")
