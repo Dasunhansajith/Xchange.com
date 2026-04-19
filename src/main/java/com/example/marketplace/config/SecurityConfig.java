@@ -81,6 +81,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/sellers/applications").hasRole("ADMIN")
                         .requestMatchers("/api/fraud/**").authenticated()
 
+                        // 🎁 Promotion Endpoints
+                        .requestMatchers("/api/promotions/admin", "/api/promotions/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/promotions/seller", "/api/promotions/seller/**").hasAnyRole("SELLER", "ADMIN")
+                        .requestMatchers("/api/promotions/available").permitAll()
+                        .requestMatchers("/api/promotions", "/api/promotions/**").authenticated()
+
                         // Reviews
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()

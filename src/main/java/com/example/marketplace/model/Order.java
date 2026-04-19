@@ -48,6 +48,26 @@ public class Order {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // ===== Promotion / Discount Fields =====
+    /**
+     * The ID of the promotion applied at checkout.
+     * Null if no promotion was used.
+     * Replaces the separate user_promotion_usage collection.
+     */
+    private String appliedPromotionId;
+
+    /**
+     * The name/code of the promotion applied (e.g., "Summer Sale").
+     * Stored for easy auditing in the database.
+     */
+    private String appliedPromotionName;
+
+    /**
+     * The discount amount in Rs that was deducted from the subtotal.
+     * Stored here so we have a permanent record on the order.
+     */
+    private BigDecimal discountAmount;
+
     // ===== Tracking Fields ("One Row" structure) =====
     private TrackingStatus trackingStatus;
     

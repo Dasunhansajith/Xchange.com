@@ -21,8 +21,8 @@ public interface ProductRepository extends MongoRepository<Product, String> {
     
     List<Product> findByCategory(String category);
     
-    // Filter by status - uses index on 'status' field
-    Page<Product> findByStatus(String status, Pageable pageable);
+    // Filter by status - case-insensitive to handle legacy data ("Active" vs "ACTIVE")
+    Page<Product> findByStatusIgnoreCase(String status, Pageable pageable);
     
     // Batch query for improved performance - avoid N+1 queries
     List<Product> findByIdIn(List<String> ids);
@@ -35,27 +35,26 @@ public interface ProductRepository extends MongoRepository<Product, String> {
      * Find active products by district (case-insensitive exact match)
      * Performance: Uses compound index on (status, district)
      */
-    Page<Product> findByStatusAndDistrictIgnoreCase(String status, String district, Pageable pageable);
+    Page<Product> findByStatusIgnoreCaseAndDistrictIgnoreCase(String status, String district, Pageable pageable);
     
     /**
      * Find active products by city (case-insensitive exact match)
      * Performance: Uses compound index on (status, city)
      */
-    Page<Product> findByStatusAndCityIgnoreCase(String status, String city, Pageable pageable);
+    Page<Product> findByStatusIgnoreCaseAndCityIgnoreCase(String status, String city, Pageable pageable);
     
     /**
      * Find active products by both district AND city (case-insensitive exact match)
      * Performance: Uses compound index on (status, district, city)
      */
-    Page<Product> findByStatusAndDistrictIgnoreCaseAndCityIgnoreCase(
+    Page<Product> findByStatusIgnoreCaseAndDistrictIgnoreCaseAndCityIgnoreCase(
         String status, String district, String city, Pageable pageable);
     
     /**
      * Find active products by district OR city (case-insensitive exact match)
      * Note: MongoDB can only use one index per query, so this may be slower than AND queries
-     * Consider using text search or aggregation pipeline for complex OR queries
      */
-    @Query("{ 'status': ?0, $or: [ { 'district': { $regex: ?1, $options: 'i' } }, { 'city': { $regex: ?2, $options: 'i' } } ] }")
+    @Query("{ 'status': { $regex: ?0, $options: 'i' }, $or: [ { 'district': { $regex: ?1, $options: 'i' } }, { 'city': { $regex: ?2, $options: 'i' } } ] }")
     Page<Product> findByStatusAndDistrictOrCity(
         String status, String district, String city, Pageable pageable);
     

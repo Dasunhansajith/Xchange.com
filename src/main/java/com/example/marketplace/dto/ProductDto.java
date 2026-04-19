@@ -26,6 +26,8 @@ public class ProductDto {
     private String shopName;
     private LocalDateTime createdAt;
     private String status;
+    private String district;
+    private String city;
     private Double averageRating;
     private Integer reviewCount;
     private List<com.example.marketplace.model.Review> reviews;
