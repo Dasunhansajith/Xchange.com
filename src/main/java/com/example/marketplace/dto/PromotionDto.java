@@ -39,7 +39,7 @@ public class PromotionDto {
     /** ADMIN, SELLER, or SYSTEM */
     private PromotionCreator createdBy;
 
-    /** Email of the seller who owns this promotion (null for admin/system) */
+    /** Email of the creator (Seller or Admin), null for system */
     private String sellerId;
 
     /**

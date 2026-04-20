@@ -28,17 +28,26 @@ public class DataInitializer {
                         .startDate(LocalDateTime.now().minusDays(1))
                         .endDate(LocalDateTime.now().plusMonths(3))
                         .createdBy(PromotionCreator.ADMIN)
+                        .sellerId("admin@xchange.com") // Admin email
                         .createdAt(LocalDateTime.now())
                         .usageType(UsageType.ONE_TIME)
                         .build()); // No validMonth = always visible, not locked to one month
                 System.out.println("[DataInitializer] Seeded ADMIN_SALE_2026");
             } else {
-                // Patch existing document to ensure createdBy is set correctly
+                // Patch existing document to ensure createdBy and sellerId are set
                 repository.findById("ADMIN_SALE_2026").ifPresent(p -> {
+                    boolean updated = false;
                     if (p.getCreatedBy() == null) {
                         p.setCreatedBy(PromotionCreator.ADMIN);
+                        updated = true;
+                    }
+                    if (p.getSellerId() == null) {
+                        p.setSellerId("admin@xchange.com");
+                        updated = true;
+                    }
+                    if (updated) {
                         repository.save(p);
-                        System.out.println("[DataInitializer] Patched ADMIN_SALE_2026 createdBy field");
+                        System.out.println("[DataInitializer] Patched ADMIN_SALE_2026 fields");
                     }
                 });
             }
@@ -53,33 +62,46 @@ public class DataInitializer {
                         .startDate(LocalDateTime.now().minusDays(5))
                         .endDate(LocalDateTime.now().plusMonths(1))
                         .createdBy(PromotionCreator.ADMIN)
+                        .sellerId("admin@xchange.com") // Admin email
                         .createdAt(LocalDateTime.now())
                         .scope("CATEGORY:Electronics")
-                        .usageType(UsageType.MULTI_USE)
+                        .usageType(UsageType.ONE_TIME) // Enforce ONE_TIME
                         .build());
                 System.out.println("[DataInitializer] Seeded ELECTRONICS_SALE");
             }
 
-            /* 
-            // Aggressive patch: Ensure ALL promotions in the database have a createdBy field
+            // Aggressive patch: Ensure ALL promotions in the database have a creator email and are ONE_TIME
             repository.findAll().forEach(p -> {
                 boolean updated = false;
+                
+                // 1. Enforce ONE_TIME for non-system promotions
+                if (p.getCreatedBy() != PromotionCreator.SYSTEM && p.getUsageType() != UsageType.ONE_TIME) {
+                    p.setUsageType(UsageType.ONE_TIME);
+                    updated = true;
+                }
+                
+                // 2. Ensure creatorId (sellerId) is set for Admin promos
+                if (p.getCreatedBy() == PromotionCreator.ADMIN && p.getSellerId() == null) {
+                    p.setSellerId("admin@xchange.com");
+                    updated = true;
+                }
+                
+                // 3. Ensure createdBy is set (Safety check)
                 if (p.getCreatedBy() == null) {
                     if (p.getSellerId() != null) {
                         p.setCreatedBy(PromotionCreator.SELLER);
                     } else {
                         p.setCreatedBy(PromotionCreator.ADMIN);
+                        p.setSellerId("admin@xchange.com");
                     }
                     updated = true;
                 }
-                // Ensure ID-based Admin promo is correctly typed
-                if ("ADMIN_SALE_2026".equals(p.getId()) && p.getCreatedBy() != PromotionCreator.ADMIN) {
-                    p.setCreatedBy(PromotionCreator.ADMIN);
-                    updated = true;
+                
+                if (updated) {
+                    repository.save(p);
+                    System.out.println("[DataInitializer] Patched promotion: " + p.getId());
                 }
-                if (updated) repository.save(p);
             });
-            */
 
             System.out.println("[DataInitializer] Promotion check and patch complete.");
         };
