@@ -22,11 +22,15 @@ public class PromotionController {
     @PostMapping
     public ResponseEntity<PromotionDto> createPromotion(@RequestBody PromotionDto dto, Authentication auth) {
         if (auth == null) return ResponseEntity.status(401).build();
-        // Ensure the sellerId is always set to the authenticated user, regardless of what the client sends
-        if (dto.getCreatedBy() == null || dto.getCreatedBy() == PromotionCreator.SELLER) {
-            dto.setSellerId(auth.getName());
+        
+        // Ensure the creator's email is always captured
+        dto.setSellerId(auth.getName());
+        
+        // Default to SELLER if not specified
+        if (dto.getCreatedBy() == null) {
             dto.setCreatedBy(PromotionCreator.SELLER);
         }
+        
         return ResponseEntity.ok(promotionService.createPromotion(dto));
     }
 

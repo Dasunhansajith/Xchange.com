@@ -45,10 +45,7 @@ public class Promotion {
     /** Who created this promotion: ADMIN, SELLER, or SYSTEM */
     private PromotionCreator createdBy;
 
-    /**
-     * The email of the seller who owns this promotion.
-     * Null for ADMIN/SYSTEM promotions.
-     */
+    /** Email of the creator (Seller or Admin), null for system */
     private String sellerId;
 
     public boolean isValid(LocalDateTime now) {

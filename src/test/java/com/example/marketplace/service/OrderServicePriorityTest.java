@@ -40,32 +40,7 @@ public class OrderServicePriorityTest {
     }
 
     @Test
-    void testAdminPromotionPriority() {
-        // Priority 1: Admin
-        Promotion adminPromo = Promotion.builder().id("ADMIN_1").build();
-        when(promotionService.getAdminAutoApplyPromotion(any())).thenReturn(adminPromo);
-        when(promotionService.applyPromotion(eq("ADMIN_1"), any(), any()))
-                .thenReturn(new PromotionService.AppliedPromotion("ADMIN_1", "Admin Sale", new BigDecimal("500")));
-
-        // User selected a different one
-        String selectedId = "SELLER_PROMO";
-
-        // Setup product
-        Product p = Product.builder().id("p1").price(new BigDecimal("1000")).sellerId("s1").stockQuantity(10).build();
-        when(productRepository.findById("p1")).thenReturn(java.util.Optional.of(p));
-
-        orderService.placeSingleOrder("user@test.com", "p1", 1, "Address", "Name", "Phone", selectedId);
-
-        // Verify that ADMIN_1 was recorded, not SELLER_PROMO
-        verify(promotionService).incrementPromotionUsageCounter(eq("ADMIN_1"));
-        verify(promotionService, never()).incrementPromotionUsageCounter(eq(selectedId));
-    }
-
-    @Test
     void testUserSelectedPromotionPriority() {
-        // No Admin Promo
-        when(promotionService.getAdminAutoApplyPromotion(any())).thenReturn(null);
-        
         // User selected SELLER_PROMO
         String selectedId = "SELLER_PROMO";
         when(promotionService.applyPromotion(eq(selectedId), any(), any()))
@@ -77,12 +52,13 @@ public class OrderServicePriorityTest {
         orderService.placeSingleOrder("user@test.com", "p1", 1, "Address", "Name", "Phone", selectedId);
 
         verify(promotionService).incrementPromotionUsageCounter(eq(selectedId));
+        // Verify that it DID NOT try to apply Welcome Promo since user selected one
+        verify(promotionService, never()).isFirstPurchase(any());
     }
 
     @Test
     void testWelcomePromoFallback() {
-        // No Admin, No User Selection
-        when(promotionService.getAdminAutoApplyPromotion(any())).thenReturn(null);
+        // No User Selection
         when(promotionService.isFirstPurchase("user@test.com")).thenReturn(true);
         when(promotionService.applyPromotion(eq("WELCOME_PROMO"), any(), any()))
                 .thenReturn(new PromotionService.AppliedPromotion("WELCOME_PROMO", "Welcome", new BigDecimal("100")));

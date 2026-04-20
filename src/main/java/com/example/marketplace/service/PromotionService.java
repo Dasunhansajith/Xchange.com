@@ -41,7 +41,7 @@ public class PromotionService {
                 .endDate(dto.getEndDate())
                 .scope(dto.getScope())
                 .usageLimit(dto.getUsageLimit())
-                .usageType(dto.getUsageType() != null ? dto.getUsageType() : UsageType.ONE_TIME)
+                .usageType(dto.getCreatedBy() == PromotionCreator.SYSTEM ? dto.getUsageType() : UsageType.ONE_TIME)
                 .validMonth(dto.getValidMonth())
                 .createdBy(dto.getCreatedBy() != null ? dto.getCreatedBy() : PromotionCreator.SELLER)
                 .sellerId(dto.getSellerId())
