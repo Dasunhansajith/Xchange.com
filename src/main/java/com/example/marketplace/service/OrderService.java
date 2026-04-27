@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,6 +32,41 @@ public class OrderService {
     private MongoTemplate mongoTemplate;
     @Autowired
     private PromotionService promotionService;
+    @Autowired
+    private ReviewRepository reviewRepository;
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void syncMissingReviews() {
+        List<Order> ordersWithReviews = orderRepository.findAll().stream()
+                .filter(o -> o.getRating() != null)
+                .collect(Collectors.toList());
+        
+        int fixedCount = 0;
+        for (Order order : ordersWithReviews) {
+            if (order.getItems() != null && !order.getItems().isEmpty()) {
+                Optional<Review> existing = reviewRepository.findByOrderId(order.getId());
+                if (!existing.isPresent()) {
+                    Review review = Review.builder()
+                            .orderId(order.getId())
+                            .productId(order.getItems().get(0).getProductId())
+                            .productName(order.getProductName())
+                            .buyerId(order.getBuyerId())
+                            .buyerName(order.getBuyerName())
+                            .createdAt(order.getCreatedAt() != null ? order.getCreatedAt() : LocalDateTime.now())
+                            .rating(order.getRating())
+                            .comment(order.getReview())
+                            .updatedAt(LocalDateTime.now())
+                            .build();
+                    reviewRepository.save(review);
+                    recalculateProductRating(review.getProductId());
+                    fixedCount++;
+                }
+            }
+        }
+        if (fixedCount > 0) {
+            System.out.println("✅ Automatically fixed " + fixedCount + " missing reviews in the database!");
+        }
+    }
 
     // @review: Priority Matrix Implementation
     // Priority 1: User-selected Promotion (Highest priority if explicitly chosen)
@@ -239,7 +276,29 @@ public class OrderService {
         order.setRating(rating);
         order.setReview(comment);
         order.setUpdatedAt(LocalDateTime.now());
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            Review review = reviewRepository.findByOrderId(orderId).orElse(null);
+            if (review == null) {
+                review = Review.builder()
+                        .orderId(orderId)
+                        .productId(order.getItems().get(0).getProductId())
+                        .productName(order.getProductName())
+                        .buyerId(buyerId)
+                        .buyerName(order.getBuyerName())
+                        .createdAt(LocalDateTime.now())
+                        .build();
+            }
+            review.setRating(rating);
+            review.setComment(comment);
+            review.setUpdatedAt(LocalDateTime.now());
+            reviewRepository.save(review);
+            
+            recalculateProductRating(review.getProductId());
+        }
+
+        return savedOrder;
     }
 
     public Order editReview(String orderId, String buyerId, Integer rating, String comment) {
@@ -258,6 +317,27 @@ public class OrderService {
         order.setReview(null);
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
+
+        reviewRepository.findByOrderId(orderId).ifPresent(review -> {
+            String productId = review.getProductId();
+            reviewRepository.delete(review);
+            recalculateProductRating(productId);
+        });
+    }
+
+    private void recalculateProductRating(String productId) {
+        productRepository.findById(productId).ifPresent(product -> {
+            List<Review> reviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(productId);
+            int count = reviews.size();
+            double average = reviews.stream()
+                    .filter(r -> r.getRating() != null)
+                    .mapToInt(Review::getRating)
+                    .average()
+                    .orElse(0.0);
+            product.setReviewCount(count);
+            product.setAverageRating(count > 0 ? Math.round(average * 10.0) / 10.0 : 0.0);
+            productRepository.save(product);
+        });
     }
 
     public SalesReportDTO getSalesReport(String sellerId, LocalDateTime start, LocalDateTime end) {

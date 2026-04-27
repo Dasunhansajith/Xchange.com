@@ -59,14 +59,14 @@ public class OrderController {
     @PostMapping("/{orderId}/review")
     public ResponseEntity<Order> submitReview(@PathVariable String orderId, @RequestBody Map<String, Object> payload, Authentication auth) {
         Integer rating = payload.get("rating") instanceof Number ? ((Number) payload.get("rating")).intValue() : null;
-        String review = (String) payload.get("review");
+        String review = payload.containsKey("comment") ? (String) payload.get("comment") : (String) payload.get("review");
         return ResponseEntity.ok(orderService.submitReview(orderId, auth.getName(), rating, review));
     }
 
     @PutMapping("/{orderId}/review")
     public ResponseEntity<Order> editReview(@PathVariable String orderId, @RequestBody Map<String, Object> payload, Authentication auth) {
         Integer rating = payload.get("rating") instanceof Number ? ((Number) payload.get("rating")).intValue() : null;
-        String comment = (String) payload.get("review");
+        String comment = payload.containsKey("comment") ? (String) payload.get("comment") : (String) payload.get("review");
         return ResponseEntity.ok(orderService.editReview(orderId, auth.getName(), rating, comment));
     }
 
